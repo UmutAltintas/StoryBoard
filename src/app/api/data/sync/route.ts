@@ -402,7 +402,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert stories
-    for (const story of data.stories) {
+    for (const story of data.stories || []) {
       await db().execute({
         sql: `INSERT INTO stories (id, user_id, title, description, genre, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [story.id, userId, story.title, story.description || null, story.genre || null, story.status, story.createdAt, story.updatedAt],
@@ -410,7 +410,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert characters
-    for (const char of data.characters) {
+    for (const char of data.characters || []) {
       await db().execute({
         sql: `INSERT INTO characters (id, story_id, name, role, age, appearance, personality, backstory, motivations, goals, flaws, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [
@@ -433,7 +433,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert locations
-    for (const loc of data.locations) {
+    for (const loc of data.locations || []) {
       await db().execute({
         sql: `INSERT INTO locations (id, story_id, name, type, description, history, significance, parent_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [loc.id, loc.storyId, loc.name, loc.type, loc.description || null, loc.history || null, loc.significance || null, loc.parentId || null, loc.createdAt, loc.updatedAt],
@@ -441,12 +441,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert events
-    for (const event of data.events) {
+    for (const event of data.events || []) {
       await db().execute({
         sql: `INSERT INTO events (id, story_id, title, description, date, location_id, significance, event_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        args: [event.id, event.storyId, event.title, event.description || null, event.date || null, event.locationId || null, event.significance, event.order, event.createdAt, event.updatedAt],
+        args: [event.id, event.storyId, event.title, event.description || null, event.date || null, event.locationId || null, event.significance || 'medium', event.order || 0, event.createdAt, event.updatedAt],
       });
-      for (const charId of event.characterIds) {
+      for (const charId of event.characterIds || []) {
         await db().execute({
           sql: `INSERT INTO event_characters (event_id, character_id) VALUES (?, ?)`,
           args: [event.id, charId],
@@ -455,7 +455,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert relationships
-    for (const rel of data.relationships) {
+    for (const rel of data.relationships || []) {
       await db().execute({
         sql: `INSERT INTO relationships (id, story_id, character1_id, character2_id, type, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [rel.id, rel.storyId, rel.character1Id, rel.character2Id, rel.type, rel.description || null, rel.createdAt, rel.updatedAt],
