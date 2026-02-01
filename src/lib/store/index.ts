@@ -747,21 +747,6 @@ export const useStoryBoardStore = create<StoryBoardState>()(
         chapters: state.chapters,
         tags: state.tags,
       }),
-      // Skip initial hydration - we'll load from server instead for authenticated users
-      skipHydration: false,
-      onRehydrateStorage: () => {
-        console.log('[Store] Rehydrating from localStorage...');
-        return (state, error) => {
-          if (error) {
-            console.error('[Store] Rehydration error:', error);
-          } else {
-            console.log('[Store] Rehydrated:', {
-              stories: state?.stories?.length || 0,
-              chapters: state?.chapters?.length || 0,
-            });
-          }
-        };
-      },
     }
   )
 );
