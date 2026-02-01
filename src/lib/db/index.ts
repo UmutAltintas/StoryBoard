@@ -240,8 +240,13 @@ async function initializeDatabase(): Promise<void> {
 let initialized = false;
 export async function ensureInitialized(): Promise<void> {
   if (!initialized) {
-    await initializeDatabase();
-    initialized = true;
+    try {
+      await initializeDatabase();
+      initialized = true;
+    } catch (error) {
+      console.error('Database initialization error:', error);
+      throw error;
+    }
   }
 }
 
