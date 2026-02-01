@@ -22,23 +22,6 @@ function getDb(): Client {
 
 // Initialize tables
 async function initializeDatabase(): Promise<void> {
-  // First, drop tables that may have incorrect schema (chapters, tags were added later)
-  // This ensures they get recreated with the correct schema
-  const migrationStatements = [
-    `DROP TABLE IF EXISTS chapter_locations`,
-    `DROP TABLE IF EXISTS chapter_characters`,
-    `DROP TABLE IF EXISTS chapters`,
-    `DROP TABLE IF EXISTS tags`,
-  ];
-  
-  for (const sql of migrationStatements) {
-    try {
-      await getDb().execute(sql);
-    } catch (e) {
-      console.log('Migration statement skipped:', sql, e);
-    }
-  }
-
   const statements = [
     `CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
