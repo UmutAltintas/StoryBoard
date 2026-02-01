@@ -194,9 +194,26 @@ export async function GET() {
       sql: `SELECT id, story_id as storyId, name, role, age, appearance, personality, backstory, motivations, goals, flaws, notes, created_at as createdAt, updated_at as updatedAt FROM characters WHERE story_id IN (${placeholders})`,
       args: storyIds,
     });
-    const characters = (charactersResult.rows as unknown as (Omit<Character, 'personality'> & { personality: string })[]).map(c => ({
+    // Helper to parse JSON array or convert string to single-item array
+    const parseArrayField = (val: unknown): string[] => {
+      if (!val) return [];
+      if (Array.isArray(val)) return val;
+      if (typeof val === 'string') {
+        try {
+          const parsed = JSON.parse(val);
+          return Array.isArray(parsed) ? parsed : [val];
+        } catch {
+          return val ? [val] : [];
+        }
+      }
+      return [];
+    };
+    const characters = (charactersResult.rows as unknown as Record<string, unknown>[]).map(c => ({
       ...c,
-      personality: c.personality ? JSON.parse(c.personality as string) : [],
+      personality: parseArrayField(c.personality),
+      motivations: parseArrayField(c.motivations),
+      goals: parseArrayField(c.goals),
+      flaws: parseArrayField(c.flaws),
     }));
 
     // Fetch locations
@@ -377,7 +394,22 @@ export async function POST(request: NextRequest) {
     for (const char of data.characters) {
       await db().execute({
         sql: `INSERT INTO characters (id, story_id, name, role, age, appearance, personality, backstory, motivations, goals, flaws, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        args: [char.id, char.storyId, char.name, char.role, char.age || null, char.appearance || null, JSON.stringify(char.personality), char.backstory || null, char.motivations || null, char.goals || null, char.flaws || null, char.notes || null, char.createdAt, char.updatedAt],
+        args: [
+          char.id, 
+          char.storyId, 
+          char.name, 
+          char.role, 
+          char.age || null, 
+          char.appearance || null, 
+          JSON.stringify(char.personality || []), 
+          char.backstory || null, 
+          JSON.stringify(char.motivations || []), 
+          JSON.stringify(char.goals || []), 
+          JSON.stringify(char.flaws || []), 
+          char.notes || null, 
+          char.createdAt, 
+          char.updatedAt
+        ],
       });
     }
 
