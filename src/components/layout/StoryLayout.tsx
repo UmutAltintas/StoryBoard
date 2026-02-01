@@ -36,7 +36,6 @@ import {
   Home,
   Menu,
   ChevronLeft,
-  Settings,
   FileText,
   GitBranch,
   Tag,
@@ -154,16 +153,6 @@ export function StoryLayout({ children, storyId }: StoryLayoutProps) {
           ))}
         </nav>
       </ScrollArea>
-
-      {/* Settings Link */}
-      <div className="p-4 border-t border-stone-200">
-        <Link href={`/story/${storyId}/settings`}>
-          <Button variant="ghost" className="w-full justify-start text-stone-500">
-            <Settings className="w-4 h-4 mr-2" />
-            Story Settings
-          </Button>
-        </Link>
-      </div>
     </div>
   );
 
