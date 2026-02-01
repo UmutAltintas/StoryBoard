@@ -231,8 +231,15 @@ async function initializeDatabase(): Promise<void> {
     `CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)`,
   ];
 
-  for (const sql of statements) {
-    await getDb().execute(sql);
+  // Execute all statements in a batch for faster initialization
+  try {
+    await getDb().batch(statements.map(sql => ({ sql, args: [] })));
+  } catch (error) {
+    // If batch fails, try one by one (some DBs don't support batch)
+    console.log('[DB] Batch init failed, trying sequential:', error);
+    for (const sql of statements) {
+      await getDb().execute(sql);
+    }
   }
 }
 
