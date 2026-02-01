@@ -48,6 +48,9 @@ import {
   Circle,
   Sparkles,
   MoreHorizontal,
+  BookOpen,
+  X,
+  ArrowUp,
 } from 'lucide-react';
 
 // =============================================================================
@@ -88,6 +91,7 @@ export function ChaptersPage({ storyId }: ChaptersPageProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [focusMode, setFocusMode] = useState(false);
+  const [readAllMode, setReadAllMode] = useState(false);
 
   // Editor state
   const [editingTitle, setEditingTitle] = useState('');
@@ -172,15 +176,25 @@ export function ChaptersPage({ storyId }: ChaptersPageProps) {
         e.preventDefault();
         handleSave();
       }
+      // Escape in read mode to exit
+      if (e.key === 'Escape' && readAllMode) {
+        setReadAllMode(false);
+        return;
+      }
       // Escape to toggle focus mode
       if (e.key === 'Escape' && selectedChapterId) {
         setFocusMode((prev) => !prev);
+      }
+      // Cmd/Ctrl + Shift + R to enter read mode
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'r' && chapters.length > 0) {
+        e.preventDefault();
+        setReadAllMode(true);
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleSave, selectedChapterId]);
+  }, [handleSave, selectedChapterId, readAllMode, chapters.length]);
 
   // Create new chapter
   const handleCreateChapter = () => {
@@ -258,14 +272,31 @@ export function ChaptersPage({ storyId }: ChaptersPageProps) {
               <h2 className="text-sm font-semibold text-stone-600 uppercase tracking-wide">
                 Chapters
               </h2>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setIsCreating(true)}
-                className="h-7 px-2 text-stone-500 hover:text-stone-800"
-              >
-                <Plus className="w-4 h-4" />
-              </Button>
+              <div className="flex items-center gap-1">
+                {chapters.length > 0 && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setReadAllMode(true)}
+                        className="h-7 px-2 text-stone-500 hover:text-stone-800"
+                      >
+                        <BookOpen className="w-4 h-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Read all chapters</TooltipContent>
+                  </Tooltip>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setIsCreating(true)}
+                  className="h-7 px-2 text-stone-500 hover:text-stone-800"
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
             
             {/* Quick Stats */}
@@ -663,6 +694,123 @@ export function ChaptersPage({ storyId }: ChaptersPageProps) {
             </div>
           )}
         </div>
+
+        {/* ===== READ ALL MODE OVERLAY ===== */}
+        {readAllMode && (
+          <div className="fixed inset-0 z-[100] bg-[#faf9f7] overflow-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-[#faf9f7]/95 backdrop-blur-sm border-b border-stone-200 z-10">
+              <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <BookOpen className="w-5 h-5 text-stone-600" />
+                  <span className="font-serif text-lg text-stone-700">Reading Mode</span>
+                  <span className="text-sm text-stone-400">
+                    {chapters.length} chapters • {totalWordCount.toLocaleString()} words
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setReadAllMode(false)}
+                  className="h-8 w-8"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Chapters Content */}
+            <div className="max-w-3xl mx-auto px-4 py-12">
+              {chapters.map((chapter, index) => (
+                <article key={chapter.id} className="mb-16">
+                  {/* Chapter Header */}
+                  <header className="mb-8 text-center">
+                    <div className="text-sm font-medium text-stone-400 uppercase tracking-widest mb-2">
+                      Chapter {index + 1}
+                    </div>
+                    <h2 className="font-serif text-3xl md:text-4xl text-stone-800 mb-3">
+                      {chapter.title}
+                    </h2>
+                    {chapter.summary && (
+                      <p className="text-stone-500 italic max-w-xl mx-auto">
+                        {chapter.summary}
+                      </p>
+                    )}
+                    <div className="mt-4 text-sm text-stone-400">
+                      {(chapter.wordCount || 0).toLocaleString()} words
+                    </div>
+                  </header>
+
+                  {/* Chapter Content */}
+                  <div 
+                    className="prose prose-stone prose-lg max-w-none"
+                    style={{ 
+                      fontFamily: "'Average', Georgia, 'Times New Roman', serif",
+                      fontSize: '18px',
+                      lineHeight: '1.9',
+                      letterSpacing: '0.01em',
+                    }}
+                  >
+                    {chapter.content ? (
+                      chapter.content.split('\n\n').map((paragraph, pIndex) => (
+                        <p key={pIndex} className="text-stone-700 mb-6 text-justify">
+                          {paragraph.split('\n').map((line, lIndex, arr) => (
+                            <span key={lIndex}>
+                              {line}
+                              {lIndex < arr.length - 1 && <br />}
+                            </span>
+                          ))}
+                        </p>
+                      ))
+                    ) : (
+                      <p className="text-stone-400 italic text-center">
+                        This chapter has no content yet.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Chapter Divider */}
+                  {index < chapters.length - 1 && (
+                    <div className="flex items-center justify-center mt-16">
+                      <div className="flex items-center gap-4">
+                        <div className="w-16 h-px bg-stone-300" />
+                        <Feather className="w-4 h-4 text-stone-300" />
+                        <div className="w-16 h-px bg-stone-300" />
+                      </div>
+                    </div>
+                  )}
+                </article>
+              ))}
+
+              {/* End of Story */}
+              <div className="text-center py-12 border-t border-stone-200 mt-8">
+                <p className="text-sm text-stone-400 uppercase tracking-widest mb-4">
+                  — End —
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setReadAllMode(false);
+                    window.scrollTo(0, 0);
+                  }}
+                  className="gap-2"
+                >
+                  <ArrowUp className="w-4 h-4" />
+                  Back to Writing
+                </Button>
+              </div>
+            </div>
+
+            {/* Floating back-to-top button */}
+            <button
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="fixed bottom-6 right-6 p-3 bg-white rounded-full shadow-lg border border-stone-200 hover:bg-stone-50 transition-colors"
+              title="Back to top"
+            >
+              <ArrowUp className="w-5 h-5 text-stone-600" />
+            </button>
+          </div>
+        )}
       </div>
     </TooltipProvider>
   );
