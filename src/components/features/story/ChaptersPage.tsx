@@ -259,7 +259,7 @@ export function ChaptersPage({ storyId }: ChaptersPageProps) {
 
   return (
     <TooltipProvider>
-      <div className="flex h-[calc(100vh-4rem)] bg-white">
+      <div className="flex min-h-screen bg-white">
         {/* ===== COLLAPSIBLE CHAPTER SIDEBAR ===== */}
         <div
           className={`${
