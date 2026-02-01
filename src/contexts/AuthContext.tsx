@@ -284,9 +284,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // LOGOUT
   // =========================================================================
   const logout = async () => {
-    // Set flag to prevent any sync from happening
-    isLoggingOutRef.current = true;
-    
     // Cancel any pending sync
     if (syncTimeoutRef.current) {
       clearTimeout(syncTimeoutRef.current);
@@ -294,13 +291,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     
     try {
-      // Sync current data first (before clearing)
-      await syncData();
+      // Force sync current data first (before clearing)
+      // Do this BEFORE setting isLoggingOut flag
+      if (user && !isSyncingRef.current) {
+        const data = exportData();
+        if (data.stories.length > 0) {
+          console.log('[Logout] Saving data before logout...');
+          isSyncingRef.current = true;
+          try {
+            const response = await fetch('/api/data/sync', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(data),
+            });
+            if (response.ok) {
+              console.log('[Logout] ✓ Data saved');
+            } else {
+              console.error('[Logout] ✗ Failed to save:', await response.text());
+            }
+          } finally {
+            isSyncingRef.current = false;
+          }
+        }
+      }
       
       await fetch('/api/auth/logout', { method: 'POST' });
     } catch (error) {
       console.error('Logout error:', error);
     }
+    
+    // Now prevent any future syncs
+    isLoggingOutRef.current = true;
     
     // Clear user first so auto-sync won't trigger
     setUser(null);
