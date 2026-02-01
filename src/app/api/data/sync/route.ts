@@ -73,9 +73,9 @@ interface LoreEntry {
   category: string;
   content: string;
   tags: string[];
-  linkedCharacters: string[];
-  linkedLocations: string[];
-  linkedEvents: string[];
+  relatedCharacterIds: string[];
+  relatedLocationIds: string[];
+  relatedEventIds: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -95,8 +95,9 @@ interface IdeaCard {
   title: string;
   content: string;
   type: string;
-  linkedCharacters: string[];
-  linkedLocations: string[];
+  tags: string[];
+  relatedCharacterIds: string[];
+  relatedLocationIds: string[];
   order: number;
   createdAt: string;
   updatedAt: string;
@@ -233,7 +234,7 @@ export async function GET() {
       sql: `SELECT id, story_id as storyId, title, category, content, tags, created_at as createdAt, updated_at as updatedAt FROM lore_entries WHERE story_id IN (${placeholders})`,
       args: storyIds,
     });
-    const loreEntriesRaw = loreResult.rows as unknown as (Omit<LoreEntry, 'tags' | 'linkedCharacters' | 'linkedLocations' | 'linkedEvents'> & { tags: string })[];
+    const loreEntriesRaw = loreResult.rows as unknown as (Omit<LoreEntry, 'tags' | 'relatedCharacterIds' | 'relatedLocationIds' | 'relatedEventIds'> & { tags: string })[];
 
     const loreEntries = await Promise.all(loreEntriesRaw.map(async l => {
       const [charResult, locResult, eventResult] = await Promise.all([
@@ -244,9 +245,9 @@ export async function GET() {
       return {
         ...l,
         tags: l.tags ? JSON.parse(l.tags as string) : [],
-        linkedCharacters: (charResult.rows as unknown as { character_id: string }[]).map(row => row.character_id),
-        linkedLocations: (locResult.rows as unknown as { location_id: string }[]).map(row => row.location_id),
-        linkedEvents: (eventResult.rows as unknown as { event_id: string }[]).map(row => row.event_id),
+        relatedCharacterIds: (charResult.rows as unknown as { character_id: string }[]).map(row => row.character_id),
+        relatedLocationIds: (locResult.rows as unknown as { location_id: string }[]).map(row => row.location_id),
+        relatedEventIds: (eventResult.rows as unknown as { event_id: string }[]).map(row => row.event_id),
       };
     }));
 
@@ -262,7 +263,7 @@ export async function GET() {
       sql: `SELECT id, story_id as storyId, group_id as groupId, title, content, type, card_order as 'order', created_at as createdAt, updated_at as updatedAt FROM idea_cards WHERE story_id IN (${placeholders})`,
       args: storyIds,
     });
-    const ideaCardsRaw = ideaCardsResult.rows as unknown as (Omit<IdeaCard, 'linkedCharacters' | 'linkedLocations'>)[];
+    const ideaCardsRaw = ideaCardsResult.rows as unknown as (Omit<IdeaCard, 'tags' | 'relatedCharacterIds' | 'relatedLocationIds'> & { tags?: string })[];
 
     const ideaCards = await Promise.all(ideaCardsRaw.map(async i => {
       const [charResult, locResult] = await Promise.all([
@@ -271,8 +272,9 @@ export async function GET() {
       ]);
       return {
         ...i,
-        linkedCharacters: (charResult.rows as unknown as { character_id: string }[]).map(row => row.character_id),
-        linkedLocations: (locResult.rows as unknown as { location_id: string }[]).map(row => row.location_id),
+        tags: [],
+        relatedCharacterIds: (charResult.rows as unknown as { character_id: string }[]).map(row => row.character_id),
+        relatedLocationIds: (locResult.rows as unknown as { location_id: string }[]).map(row => row.location_id),
       };
     }));
 
@@ -410,18 +412,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert lore entries
-    for (const lore of data.loreEntries) {
+    for (const lore of data.loreEntries || []) {
       await db().execute({
         sql: `INSERT INTO lore_entries (id, story_id, title, category, content, tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        args: [lore.id, lore.storyId, lore.title, lore.category, lore.content, JSON.stringify(lore.tags), lore.createdAt, lore.updatedAt],
+        args: [lore.id, lore.storyId, lore.title, lore.category, lore.content, JSON.stringify(lore.tags || []), lore.createdAt, lore.updatedAt],
       });
-      for (const charId of lore.linkedCharacters) {
+      for (const charId of lore.relatedCharacterIds || []) {
         await db().execute({ sql: `INSERT INTO lore_characters (lore_id, character_id) VALUES (?, ?)`, args: [lore.id, charId] });
       }
-      for (const locId of lore.linkedLocations) {
+      for (const locId of lore.relatedLocationIds || []) {
         await db().execute({ sql: `INSERT INTO lore_locations (lore_id, location_id) VALUES (?, ?)`, args: [lore.id, locId] });
       }
-      for (const eventId of lore.linkedEvents) {
+      for (const eventId of lore.relatedEventIds || []) {
         await db().execute({ sql: `INSERT INTO lore_events (lore_id, event_id) VALUES (?, ?)`, args: [lore.id, eventId] });
       }
     }
@@ -435,15 +437,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert idea cards
-    for (const idea of data.ideaCards) {
+    for (const idea of data.ideaCards || []) {
       await db().execute({
         sql: `INSERT INTO idea_cards (id, story_id, group_id, title, content, type, card_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [idea.id, idea.storyId, idea.groupId || null, idea.title, idea.content, idea.type, idea.order, idea.createdAt, idea.updatedAt],
       });
-      for (const charId of idea.linkedCharacters) {
+      for (const charId of idea.relatedCharacterIds || []) {
         await db().execute({ sql: `INSERT INTO idea_characters (idea_id, character_id) VALUES (?, ?)`, args: [idea.id, charId] });
       }
-      for (const locId of idea.linkedLocations) {
+      for (const locId of idea.relatedLocationIds || []) {
         await db().execute({ sql: `INSERT INTO idea_locations (idea_id, location_id) VALUES (?, ?)`, args: [idea.id, locId] });
       }
     }
