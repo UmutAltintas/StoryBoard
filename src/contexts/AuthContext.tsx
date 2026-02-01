@@ -75,31 +75,50 @@ export function AuthProvider({ children }: AuthProviderProps) {
       skipNextSyncRef.current = true; // Prevent sync during load
       lastLoadTimeRef.current = Date.now(); // Track when we loaded
       
-      // CRITICAL: Clear localStorage to prevent stale data from being synced back
-      // This ensures server data takes priority over any cached local data
-      console.log('[Auth] Clearing local storage before loading from server...');
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('storyboard-storage');
-      }
-      
       console.log('[Auth] Loading user data from server...');
       const response = await fetch('/api/data/sync');
       console.log('[Auth] Response status:', response.status);
+      
       if (response.ok) {
-        const data = await response.json();
-        console.log('[Auth] Loaded data from server:', { 
-          stories: data.stories?.length || 0,
-          characters: data.characters?.length || 0,
-          chapters: data.chapters?.length || 0,
-          tags: data.tags?.length || 0,
+        const serverData = await response.json();
+        console.log('[Auth] Server data:', { 
+          stories: serverData.stories?.length || 0,
+          characters: serverData.characters?.length || 0,
+          chapters: serverData.chapters?.length || 0,
+          tags: serverData.tags?.length || 0,
         });
-        // Load data into zustand store (this will also persist to localStorage)
-        loadFromServer(data);
-        console.log('[Auth] Data loaded into store');
+        
+        // Get current local data from the store
+        const localData = exportData();
+        console.log('[Auth] Local data:', {
+          stories: localData.stories?.length || 0,
+          chapters: localData.chapters?.length || 0,
+        });
+        
+        // If server has data OR local has no data, use server data
+        const serverHasData = (serverData.stories?.length > 0) || (serverData.chapters?.length > 0);
+        const localHasData = (localData.stories?.length > 0) || (localData.chapters?.length > 0);
+        
+        if (serverHasData || !localHasData) {
+          console.log('[Auth] Using server data');
+          // Clear localStorage before loading to prevent stale data issues
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('storyboard-storage');
+          }
+          loadFromServer(serverData);
+          console.log('[Auth] Data loaded into store');
+        } else if (localHasData && !serverHasData) {
+          // Local has data but server doesn't - sync local data to server first!
+          console.log('[Auth] Server is empty but local has data - syncing to server first');
+          skipNextSyncRef.current = false; // Allow this sync
+          await syncDataToServer(localData);
+          console.log('[Auth] Local data synced to server');
+        }
       } else {
         console.error('[Auth] Failed to load:', await response.text());
       }
-      // Keep skip flag for a longer time to avoid race condition with store changes
+      
+      // Keep skip flag for a bit to avoid immediate re-sync
       setTimeout(() => {
         skipNextSyncRef.current = false;
         console.log('[Auth] Sync protection disabled, auto-sync enabled');
@@ -108,7 +127,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.error('Failed to load user data:', error);
       skipNextSyncRef.current = false;
     }
-  }, [loadFromServer]);
+  }, [loadFromServer, exportData]);
+
+  // Direct sync function (not debounced) for immediate use
+  const syncDataToServer = useCallback(async (data: ReturnType<typeof exportData>) => {
+    try {
+      console.log('[Auth] Syncing data to server...', {
+        stories: data.stories?.length || 0,
+        chapters: data.chapters?.length || 0,
+      });
+      const response = await fetch('/api/data/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        console.error('[Auth] Sync failed:', await response.text());
+      } else {
+        console.log('[Auth] Sync successful');
+      }
+    } catch (error) {
+      console.error('[Auth] Sync error:', error);
+    }
+  }, []);
 
   // Save local store data to server
   const syncData = useCallback(async () => {
