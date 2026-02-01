@@ -108,11 +108,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
           loadFromServer(serverData);
           console.log('[Auth] Data loaded into store');
         } else if (localHasData && !serverHasData) {
-          // Local has data but server doesn't - sync local data to server first!
-          console.log('[Auth] Server is empty but local has data - syncing to server first');
+          // Local has data but server doesn't - sync local data to server
+          console.log('[Auth] Server is empty but local has data - syncing to server');
           skipNextSyncRef.current = false; // Allow this sync
-          await syncDataToServer(localData);
-          console.log('[Auth] Local data synced to server');
+          try {
+            const syncResponse = await fetch('/api/data/sync', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(localData),
+            });
+            if (syncResponse.ok) {
+              console.log('[Auth] Local data synced to server');
+            } else {
+              console.error('[Auth] Failed to sync local data:', await syncResponse.text());
+            }
+          } catch (syncError) {
+            console.error('[Auth] Sync error:', syncError);
+          }
         }
       } else {
         console.error('[Auth] Failed to load:', await response.text());
@@ -128,28 +140,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       skipNextSyncRef.current = false;
     }
   }, [loadFromServer, exportData]);
-
-  // Direct sync function (not debounced) for immediate use
-  const syncDataToServer = useCallback(async (data: ReturnType<typeof exportData>) => {
-    try {
-      console.log('[Auth] Syncing data to server...', {
-        stories: data.stories?.length || 0,
-        chapters: data.chapters?.length || 0,
-      });
-      const response = await fetch('/api/data/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        console.error('[Auth] Sync failed:', await response.text());
-      } else {
-        console.log('[Auth] Sync successful');
-      }
-    } catch (error) {
-      console.error('[Auth] Sync error:', error);
-    }
-  }, []);
 
   // Save local store data to server
   const syncData = useCallback(async () => {
