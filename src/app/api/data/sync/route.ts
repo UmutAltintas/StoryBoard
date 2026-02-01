@@ -323,6 +323,15 @@ export async function GET() {
     });
     const tags = tagsResult.rows as unknown as Tag[];
 
+    console.log('[Sync GET] Returning data:', {
+      stories: stories.length,
+      chapters: chapters.length,
+      loreEntries: loreEntries.length,
+      ideaGroups: ideaGroups.length,
+      ideaCards: ideaCards.length,
+      events: events.length,
+    });
+
     return NextResponse.json({
       stories,
       characters,
@@ -352,6 +361,15 @@ export async function POST(request: NextRequest) {
 
     const userId = user.userId;
     const data: SyncData = await request.json();
+
+    console.log('[Sync POST] Received data:', {
+      stories: data.stories?.length || 0,
+      chapters: data.chapters?.length || 0,
+      loreEntries: data.loreEntries?.length || 0,
+      ideaGroups: data.ideaGroups?.length || 0,
+      ideaCards: data.ideaCards?.length || 0,
+      events: data.events?.length || 0,
+    });
 
     // Clear existing data for this user's stories
     const existingStoriesResult = await db().execute({
@@ -462,7 +480,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert idea groups
-    for (const group of data.ideaGroups) {
+    for (const group of data.ideaGroups || []) {
       await db().execute({
         sql: `INSERT INTO idea_groups (id, story_id, name, color, created_at) VALUES (?, ?, ?, ?, ?)`,
         args: [group.id, group.storyId, group.name, group.color || null, group.createdAt],
