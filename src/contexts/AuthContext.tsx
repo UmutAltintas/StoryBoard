@@ -74,6 +74,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       skipNextSyncRef.current = true; // Prevent sync during load
       lastLoadTimeRef.current = Date.now(); // Track when we loaded
+      
+      // CRITICAL: Clear localStorage to prevent stale data from being synced back
+      // This ensures server data takes priority over any cached local data
+      console.log('[Auth] Clearing local storage before loading from server...');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('storyboard-storage');
+      }
+      
       console.log('[Auth] Loading user data from server...');
       const response = await fetch('/api/data/sync');
       console.log('[Auth] Response status:', response.status);
@@ -85,7 +93,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           chapters: data.chapters?.length || 0,
           tags: data.tags?.length || 0,
         });
-        // Load data into zustand store
+        // Load data into zustand store (this will also persist to localStorage)
         loadFromServer(data);
         console.log('[Auth] Data loaded into store');
       } else {
@@ -196,15 +204,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     // Sync on beforeunload
     const handleBeforeUnload = () => {
+      // Don't sync if we just loaded (prevent syncing stale data)
+      const timeSinceLoad = Date.now() - lastLoadTimeRef.current;
+      if (timeSinceLoad < 5000) {
+        console.log('[Auth] Skipping beforeunload sync - just loaded data');
+        return;
+      }
       // Use sendBeacon for reliable sync on page close
       const data = exportData();
-      navigator.sendBeacon('/api/data/sync', JSON.stringify(data));
+      const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+      navigator.sendBeacon('/api/data/sync', blob);
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
 
     // Sync on visibility change (when user switches tabs/minimizes)
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
+        // Don't sync if we just loaded
+        const timeSinceLoad = Date.now() - lastLoadTimeRef.current;
+        if (timeSinceLoad < 5000) {
+          console.log('[Auth] Skipping visibility sync - just loaded data');
+          return;
+        }
         syncData();
       }
     };

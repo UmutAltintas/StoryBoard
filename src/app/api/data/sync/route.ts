@@ -300,6 +300,7 @@ export async function GET() {
       sql: `SELECT id, story_id as storyId, title, content, summary, chapter_order as 'order', status, word_count as wordCount, notes, tags, created_at as createdAt, updated_at as updatedAt FROM chapters WHERE story_id IN (${placeholders})`,
       args: storyIds,
     });
+    console.log('[Sync GET] Chapters from DB:', chaptersResult.rows.length);
     const chaptersRaw = chaptersResult.rows as unknown as (Omit<Chapter, 'tags' | 'characterIds' | 'locationIds'> & { tags: string })[];
 
     const chapters = await Promise.all(chaptersRaw.map(async c => {
