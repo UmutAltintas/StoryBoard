@@ -51,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isSyncingRef = useRef(false);
+  const isLoggingOutRef = useRef(false);
 
   // Store methods
   const loadFromServer = useStoryBoardStore((state) => state.loadFromServer);
@@ -61,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // SYNC: Save data to server
   // =========================================================================
   const syncData = useCallback(async () => {
-    if (!user || isSyncingRef.current) return;
+    if (!user || isSyncingRef.current || isLoggingOutRef.current) return;
     
     const data = exportData();
     if (data.stories.length === 0) return;
@@ -283,20 +284,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // LOGOUT
   // =========================================================================
   const logout = async () => {
+    // Set flag to prevent any sync from happening
+    isLoggingOutRef.current = true;
+    
+    // Cancel any pending sync
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+      syncTimeoutRef.current = null;
+    }
+    
     try {
-      // Sync first
+      // Sync current data first (before clearing)
       await syncData();
       
       await fetch('/api/auth/logout', { method: 'POST' });
     } catch (error) {
       console.error('Logout error:', error);
-    } finally {
-      setUser(null);
-      clearAll();
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('storyboard-storage');
-      }
     }
+    
+    // Clear user first so auto-sync won't trigger
+    setUser(null);
+    
+    // Then clear local data
+    clearAll();
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('storyboard-storage');
+    }
+    
+    // Reset logout flag
+    isLoggingOutRef.current = false;
   };
 
   // =========================================================================
