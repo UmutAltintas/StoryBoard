@@ -107,13 +107,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
     
     try {
       setIsSyncing(true);
+      console.log('[Auth] Syncing data to server...', {
+        stories: data.stories.length,
+        chapters: data.chapters?.length || 0,
+        loreEntries: data.loreEntries?.length || 0,
+        ideaCards: data.ideaCards?.length || 0,
+        tags: data.tags?.length || 0,
+      });
       const response = await fetch('/api/data/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
       if (!response.ok) {
-        console.error('Sync failed:', await response.text());
+        const errorText = await response.text();
+        console.error('Sync failed:', errorText);
+      } else {
+        console.log('[Auth] Sync successful');
       }
     } catch (error) {
       console.error('Failed to sync data:', error);

@@ -472,9 +472,18 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    console.log('[Sync] Data saved successfully:', {
+      stories: data.stories?.length || 0,
+      chapters: data.chapters?.length || 0,
+      loreEntries: data.loreEntries?.length || 0,
+      ideaCards: data.ideaCards?.length || 0,
+      tags: data.tags?.length || 0,
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Data save error:', error);
-    return NextResponse.json({ error: 'Failed to save data' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: 'Failed to save data', details: errorMessage }, { status: 500 });
   }
 }
