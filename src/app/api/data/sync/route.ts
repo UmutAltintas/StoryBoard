@@ -19,7 +19,7 @@ const EMPTY_DATA = {
 // GET - Load user data from database
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get("auth-token")?.value;
+    const token = request.cookies.get("access_token")?.value;
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 // POST - Save user data to database
 export async function POST(request: NextRequest) {
   try {
-    const token = request.cookies.get("auth-token")?.value;
+    const token = request.cookies.get("access_token")?.value;
     if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
