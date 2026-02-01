@@ -50,6 +50,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [isSyncing, setIsSyncing] = useState(false);
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const skipNextSyncRef = useRef(false);
+  const lastLoadTimeRef = useRef<number>(0);
 
   // Get store methods for data sync - use selectors to avoid re-renders
   const loadFromServer = useStoryBoardStore((state) => state.loadFromServer);
@@ -72,14 +73,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const loadUserData = useCallback(async () => {
     try {
       skipNextSyncRef.current = true; // Prevent sync during load
+      lastLoadTimeRef.current = Date.now(); // Track when we loaded
       console.log('[Auth] Loading user data from server...');
       const response = await fetch('/api/data/sync');
       console.log('[Auth] Response status:', response.status);
       if (response.ok) {
         const data = await response.json();
-        console.log('[Auth] Loaded data:', { 
+        console.log('[Auth] Loaded data from server:', { 
           stories: data.stories?.length || 0,
-          characters: data.characters?.length || 0 
+          characters: data.characters?.length || 0,
+          chapters: data.chapters?.length || 0,
+          tags: data.tags?.length || 0,
         });
         // Load data into zustand store
         loadFromServer(data);
@@ -87,10 +91,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       } else {
         console.error('[Auth] Failed to load:', await response.text());
       }
-      // Keep skip flag for a short time to avoid race condition
+      // Keep skip flag for a longer time to avoid race condition with store changes
       setTimeout(() => {
         skipNextSyncRef.current = false;
-      }, 1000);
+        console.log('[Auth] Sync protection disabled, auto-sync enabled');
+      }, 3000);
     } catch (error) {
       console.error('Failed to load user data:', error);
       skipNextSyncRef.current = false;
@@ -99,6 +104,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Save local store data to server
   const syncData = useCallback(async () => {
+    // Don't sync if we just loaded data (within 5 seconds)
+    const timeSinceLoad = Date.now() - lastLoadTimeRef.current;
+    if (timeSinceLoad < 5000) {
+      console.log('[Auth] Skipping sync - just loaded data', timeSinceLoad, 'ms ago');
+      return;
+    }
+    
     if (!user || skipNextSyncRef.current || isSyncing) return;
     
     // Don't sync empty data
@@ -134,7 +146,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Debounced sync when data changes
   useEffect(() => {
-    if (!user || isLoading) return;
+    // Don't sync during initial loading or when sync protection is active
+    if (!user || isLoading || skipNextSyncRef.current) return;
     
     // Clear any pending sync
     if (syncTimeoutRef.current) {
