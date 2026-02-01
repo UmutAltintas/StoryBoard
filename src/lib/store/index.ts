@@ -580,41 +580,41 @@ export const useStoryBoardStore = create<StoryBoardState>()(
       // =========================================================================
       loadFromServer: (data) => {
         set({
-          stories: data.stories.map(s => ({
+          stories: (data.stories || []).map(s => ({
             ...s,
             createdAt: new Date(s.createdAt),
             updatedAt: new Date(s.updatedAt),
           })),
-          characters: data.characters.map(c => ({
+          characters: (data.characters || []).map(c => ({
             ...c,
             createdAt: new Date(c.createdAt),
             updatedAt: new Date(c.updatedAt),
           })),
-          locations: data.locations.map(l => ({
+          locations: (data.locations || []).map(l => ({
             ...l,
             createdAt: new Date(l.createdAt),
             updatedAt: new Date(l.updatedAt),
           })),
-          events: data.events.map(e => ({
+          events: (data.events || []).map(e => ({
             ...e,
             createdAt: new Date(e.createdAt),
             updatedAt: new Date(e.updatedAt),
           })),
-          relationships: data.relationships.map(r => ({
+          relationships: (data.relationships || []).map(r => ({
             ...r,
             createdAt: new Date(r.createdAt),
             updatedAt: new Date(r.updatedAt),
           })),
-          loreEntries: data.loreEntries.map(l => ({
+          loreEntries: (data.loreEntries || []).map(l => ({
             ...l,
             createdAt: new Date(l.createdAt),
             updatedAt: new Date(l.updatedAt),
           })),
-          ideaGroups: data.ideaGroups.map(g => ({
+          ideaGroups: (data.ideaGroups || []).map(g => ({
             ...g,
             createdAt: new Date(g.createdAt),
           })),
-          ideaCards: data.ideaCards.map(i => ({
+          ideaCards: (data.ideaCards || []).map(i => ({
             ...i,
             createdAt: new Date(i.createdAt),
             updatedAt: new Date(i.updatedAt),
