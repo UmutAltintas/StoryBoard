@@ -160,6 +160,43 @@ async function initializeDatabase(): Promise<void> {
       FOREIGN KEY (story_id) REFERENCES stories(id) ON DELETE CASCADE,
       FOREIGN KEY (group_id) REFERENCES idea_groups(id) ON DELETE SET NULL
     )`,
+    `CREATE TABLE IF NOT EXISTS chapters (
+      id TEXT PRIMARY KEY,
+      story_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      content TEXT,
+      summary TEXT,
+      chapter_order INTEGER DEFAULT 0,
+      status TEXT DEFAULT 'draft',
+      word_count INTEGER DEFAULT 0,
+      notes TEXT,
+      tags TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (story_id) REFERENCES stories(id) ON DELETE CASCADE
+    )`,
+    `CREATE TABLE IF NOT EXISTS chapter_characters (
+      chapter_id TEXT NOT NULL,
+      character_id TEXT NOT NULL,
+      PRIMARY KEY (chapter_id, character_id),
+      FOREIGN KEY (chapter_id) REFERENCES chapters(id) ON DELETE CASCADE,
+      FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
+    )`,
+    `CREATE TABLE IF NOT EXISTS chapter_locations (
+      chapter_id TEXT NOT NULL,
+      location_id TEXT NOT NULL,
+      PRIMARY KEY (chapter_id, location_id),
+      FOREIGN KEY (chapter_id) REFERENCES chapters(id) ON DELETE CASCADE,
+      FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE CASCADE
+    )`,
+    `CREATE TABLE IF NOT EXISTS tags (
+      id TEXT PRIMARY KEY,
+      story_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      color TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (story_id) REFERENCES stories(id) ON DELETE CASCADE
+    )`,
     `CREATE TABLE IF NOT EXISTS idea_characters (
       idea_id TEXT NOT NULL,
       character_id TEXT NOT NULL,
@@ -189,6 +226,8 @@ async function initializeDatabase(): Promise<void> {
     `CREATE INDEX IF NOT EXISTS idx_relationships_story ON relationships(story_id)`,
     `CREATE INDEX IF NOT EXISTS idx_lore_story ON lore_entries(story_id)`,
     `CREATE INDEX IF NOT EXISTS idx_ideas_story ON idea_cards(story_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_chapters_story ON chapters(story_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_tags_story ON tags(story_id)`,
     `CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)`,
   ];
 

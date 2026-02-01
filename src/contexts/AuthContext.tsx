@@ -61,6 +61,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const characters = useStoryBoardStore((state) => state.characters);
   const locations = useStoryBoardStore((state) => state.locations);
   const events = useStoryBoardStore((state) => state.events);
+  const chapters = useStoryBoardStore((state) => state.chapters);
+  const tags = useStoryBoardStore((state) => state.tags);
 
   // Load user data from server into local store
   const loadUserData = useCallback(async () => {
@@ -135,7 +137,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         clearTimeout(syncTimeoutRef.current);
       }
     };
-  }, [user, isLoading, stories, characters, locations, events, syncData]);
+  }, [user, isLoading, stories, characters, locations, events, chapters, tags, syncData]);
 
   // Check authentication status on mount
   useEffect(() => {

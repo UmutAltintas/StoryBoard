@@ -102,6 +102,31 @@ interface IdeaCard {
   updatedAt: string;
 }
 
+interface Chapter {
+  id: string;
+  storyId: string;
+  title: string;
+  content: string;
+  summary?: string;
+  order: number;
+  status: string;
+  wordCount: number;
+  notes?: string;
+  tags: string[];
+  characterIds: string[];
+  locationIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Tag {
+  id: string;
+  storyId: string;
+  name: string;
+  color: string;
+  createdAt: string;
+}
+
 interface Story {
   id: string;
   userId: string;
@@ -122,6 +147,8 @@ interface SyncData {
   loreEntries: LoreEntry[];
   ideaGroups: IdeaGroup[];
   ideaCards: IdeaCard[];
+  chapters: Chapter[];
+  tags: Tag[];
 }
 
 // GET: Load user's data from database
@@ -154,6 +181,8 @@ export async function GET() {
         loreEntries: [],
         ideaGroups: [],
         ideaCards: [],
+        chapters: [],
+        tags: [],
       });
     }
 
@@ -247,6 +276,33 @@ export async function GET() {
       };
     }));
 
+    // Fetch chapters with linked characters and locations
+    const chaptersResult = await db().execute({
+      sql: `SELECT id, story_id as storyId, title, content, summary, chapter_order as 'order', status, word_count as wordCount, notes, tags, created_at as createdAt, updated_at as updatedAt FROM chapters WHERE story_id IN (${placeholders})`,
+      args: storyIds,
+    });
+    const chaptersRaw = chaptersResult.rows as unknown as (Omit<Chapter, 'tags' | 'characterIds' | 'locationIds'> & { tags: string })[];
+
+    const chapters = await Promise.all(chaptersRaw.map(async c => {
+      const [charResult, locResult] = await Promise.all([
+        db().execute({ sql: `SELECT character_id FROM chapter_characters WHERE chapter_id = ?`, args: [c.id] }),
+        db().execute({ sql: `SELECT location_id FROM chapter_locations WHERE chapter_id = ?`, args: [c.id] }),
+      ]);
+      return {
+        ...c,
+        tags: c.tags ? JSON.parse(c.tags as string) : [],
+        characterIds: (charResult.rows as unknown as { character_id: string }[]).map(row => row.character_id),
+        locationIds: (locResult.rows as unknown as { location_id: string }[]).map(row => row.location_id),
+      };
+    }));
+
+    // Fetch tags
+    const tagsResult = await db().execute({
+      sql: `SELECT id, story_id as storyId, name, color, created_at as createdAt FROM tags WHERE story_id IN (${placeholders})`,
+      args: storyIds,
+    });
+    const tags = tagsResult.rows as unknown as Tag[];
+
     return NextResponse.json({
       stories,
       characters,
@@ -256,6 +312,8 @@ export async function GET() {
       loreEntries,
       ideaGroups,
       ideaCards,
+      chapters,
+      tags,
     });
   } catch (error) {
     console.error('Data fetch error:', error);
@@ -291,11 +349,15 @@ export async function POST(request: NextRequest) {
       await db().execute({ sql: `DELETE FROM lore_events WHERE lore_id IN (SELECT id FROM lore_entries WHERE story_id IN (${placeholders}))`, args: existingStoryIds });
       await db().execute({ sql: `DELETE FROM idea_characters WHERE idea_id IN (SELECT id FROM idea_cards WHERE story_id IN (${placeholders}))`, args: existingStoryIds });
       await db().execute({ sql: `DELETE FROM idea_locations WHERE idea_id IN (SELECT id FROM idea_cards WHERE story_id IN (${placeholders}))`, args: existingStoryIds });
+      await db().execute({ sql: `DELETE FROM chapter_characters WHERE chapter_id IN (SELECT id FROM chapters WHERE story_id IN (${placeholders}))`, args: existingStoryIds });
+      await db().execute({ sql: `DELETE FROM chapter_locations WHERE chapter_id IN (SELECT id FROM chapters WHERE story_id IN (${placeholders}))`, args: existingStoryIds });
       await db().execute({ sql: `DELETE FROM idea_cards WHERE story_id IN (${placeholders})`, args: existingStoryIds });
       await db().execute({ sql: `DELETE FROM idea_groups WHERE story_id IN (${placeholders})`, args: existingStoryIds });
       await db().execute({ sql: `DELETE FROM lore_entries WHERE story_id IN (${placeholders})`, args: existingStoryIds });
       await db().execute({ sql: `DELETE FROM relationships WHERE story_id IN (${placeholders})`, args: existingStoryIds });
       await db().execute({ sql: `DELETE FROM events WHERE story_id IN (${placeholders})`, args: existingStoryIds });
+      await db().execute({ sql: `DELETE FROM chapters WHERE story_id IN (${placeholders})`, args: existingStoryIds });
+      await db().execute({ sql: `DELETE FROM tags WHERE story_id IN (${placeholders})`, args: existingStoryIds });
       await db().execute({ sql: `DELETE FROM locations WHERE story_id IN (${placeholders})`, args: existingStoryIds });
       await db().execute({ sql: `DELETE FROM characters WHERE story_id IN (${placeholders})`, args: existingStoryIds });
       await db().execute({ sql: `DELETE FROM stories WHERE user_id = ?`, args: [userId] });
@@ -384,6 +446,28 @@ export async function POST(request: NextRequest) {
       for (const locId of idea.linkedLocations) {
         await db().execute({ sql: `INSERT INTO idea_locations (idea_id, location_id) VALUES (?, ?)`, args: [idea.id, locId] });
       }
+    }
+
+    // Insert chapters
+    for (const chapter of data.chapters || []) {
+      await db().execute({
+        sql: `INSERT INTO chapters (id, story_id, title, content, summary, chapter_order, status, word_count, notes, tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [chapter.id, chapter.storyId, chapter.title, chapter.content || '', chapter.summary || null, chapter.order, chapter.status, chapter.wordCount, chapter.notes || null, JSON.stringify(chapter.tags || []), chapter.createdAt, chapter.updatedAt],
+      });
+      for (const charId of chapter.characterIds || []) {
+        await db().execute({ sql: `INSERT INTO chapter_characters (chapter_id, character_id) VALUES (?, ?)`, args: [chapter.id, charId] });
+      }
+      for (const locId of chapter.locationIds || []) {
+        await db().execute({ sql: `INSERT INTO chapter_locations (chapter_id, location_id) VALUES (?, ?)`, args: [chapter.id, locId] });
+      }
+    }
+
+    // Insert tags
+    for (const tag of data.tags || []) {
+      await db().execute({
+        sql: `INSERT INTO tags (id, story_id, name, color, created_at) VALUES (?, ?, ?, ?, ?)`,
+        args: [tag.id, tag.storyId, tag.name, tag.color, tag.createdAt],
+      });
     }
 
     return NextResponse.json({ success: true });
