@@ -312,6 +312,7 @@ export function IdeasPage({ storyId, selectedId }: IdeasPageProps) {
                 key={card.id}
                 card={card}
                 groups={ideaGroups}
+                storyTags={storyTags}
                 onEdit={() => setEditingCard(card)}
                 onDelete={() => deleteIdeaCard(card.id)}
               />
@@ -361,16 +362,23 @@ export function IdeasPage({ storyId, selectedId }: IdeasPageProps) {
 function IdeaCardComponent({
   card,
   groups,
+  storyTags,
   onEdit,
   onDelete,
 }: {
   card: IdeaCard;
   groups: IdeaGroup[];
+  storyTags: TagType[];
   onEdit: () => void;
   onDelete: () => void;
 }) {
   const Icon = typeIcons[card.type];
   const group = groups.find((g) => g.id === card.groupId);
+  
+  // Resolve tag IDs to tag objects
+  const resolvedTags = card.tags
+    .map((tagId) => storyTags.find((t) => t.id === tagId))
+    .filter(Boolean) as TagType[];
 
   return (
     <Card
@@ -427,6 +435,22 @@ function IdeaCardComponent({
       <CardContent className="space-y-2">
         <h3 className="font-semibold text-stone-800 line-clamp-1">{card.title}</h3>
         <p className="text-sm text-stone-600 line-clamp-3">{card.content}</p>
+        {resolvedTags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {resolvedTags.slice(0, 3).map((tag) => (
+              <span
+                key={tag.id}
+                className="px-2 py-0.5 rounded-full text-xs font-medium"
+                style={{
+                  backgroundColor: `${tag.color}30`,
+                  color: tag.color,
+                }}
+              >
+                {tag.name}
+              </span>
+            ))}
+          </div>
+        )}
         {group && (
           <div className="flex items-center gap-1 text-xs text-stone-400">
             <Folder className="w-3 h-3" />
@@ -592,7 +616,7 @@ function IdeaDialog({
                         : 'opacity-60 hover:opacity-100'
                     )}
                     style={{
-                      backgroundColor: isSelected ? tag.color : `${tag.color}40`,
+                      backgroundColor: isSelected ? tag.color : `${tag.color}30`,
                       color: isSelected ? '#fff' : tag.color,
                     }}
                     onClick={() => {

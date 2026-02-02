@@ -268,6 +268,9 @@ export function LorePage({ storyId, selectedId }: LorePageProps) {
             <div className="p-2 space-y-1">
               {filteredEntries.map((entry) => {
                 const Icon = categoryIcons[entry.category];
+                const entryResolvedTags = entry.tags
+                  .map((tagId) => storyTags.find((t) => t.id === tagId))
+                  .filter(Boolean) as TagType[];
                 return (
                   <button
                     key={entry.id}
@@ -290,12 +293,19 @@ export function LorePage({ storyId, selectedId }: LorePageProps) {
                         <p className="text-xs text-stone-500 line-clamp-2 mt-1">
                           {entry.content}
                         </p>
-                        {entry.tags.length > 0 && (
+                        {entryResolvedTags.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-2">
-                            {entry.tags.slice(0, 3).map((tag) => (
-                              <Badge key={tag} variant="secondary" className="text-xs">
-                                {tag}
-                              </Badge>
+                            {entryResolvedTags.slice(0, 3).map((tag) => (
+                              <span
+                                key={tag.id}
+                                className="px-2 py-0.5 rounded-full text-xs font-medium"
+                                style={{
+                                  backgroundColor: `${tag.color}30`,
+                                  color: tag.color,
+                                }}
+                              >
+                                {tag.name}
+                              </span>
                             ))}
                           </div>
                         )}
@@ -319,6 +329,7 @@ export function LorePage({ storyId, selectedId }: LorePageProps) {
             characters={characters}
             locations={locations}
             events={events}
+            storyTags={storyTags}
             onEdit={() => setEditingEntry(selectedEntry)}
             onDelete={() => {
               deleteLoreEntry(selectedEntry.id);
@@ -388,6 +399,7 @@ function LoreDetails({
   characters,
   locations,
   events,
+  storyTags,
   onEdit,
   onDelete,
 }: {
@@ -395,6 +407,7 @@ function LoreDetails({
   characters: { id: string; name: string }[];
   locations: { id: string; name: string }[];
   events: { id: string; title: string }[];
+  storyTags: TagType[];
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -410,6 +423,11 @@ function LoreDetails({
   const relatedEvents = events.filter((e) =>
     entry.relatedEventIds.includes(e.id)
   );
+  
+  // Resolve tag IDs to tag objects
+  const resolvedTags = entry.tags
+    .map((tagId) => storyTags.find((t) => t.id === tagId))
+    .filter(Boolean) as TagType[];
 
   return (
     <ScrollArea className="flex-1">
@@ -449,12 +467,19 @@ function LoreDetails({
         </div>
 
         {/* Tags */}
-        {entry.tags.length > 0 && (
+        {resolvedTags.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {entry.tags.map((tag) => (
-              <Badge key={tag} variant="outline" className="border-stone-300">
-                {tag}
-              </Badge>
+            {resolvedTags.map((tag) => (
+              <span
+                key={tag.id}
+                className="px-2 py-1 rounded-full text-xs font-medium"
+                style={{
+                  backgroundColor: `${tag.color}30`,
+                  color: tag.color,
+                }}
+              >
+                {tag.name}
+              </span>
             ))}
           </div>
         )}
@@ -632,29 +657,30 @@ function LoreDialog({
             Tags
           </Label>
           {storyTags.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 p-2 border rounded-lg max-h-32 overflow-y-auto">
               {storyTags.map((tag) => {
-                const isSelected = selectedTags.includes(tag.name);
+                const isSelected = selectedTags.includes(tag.id);
                 return (
                   <button
                     key={tag.id}
                     type="button"
-                    onClick={() => {
-                      if (isSelected) {
-                        setSelectedTags(selectedTags.filter(t => t !== tag.name));
-                      } else {
-                        setSelectedTags([...selectedTags, tag.name]);
-                      }
+                    className={cn(
+                      'px-2 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1',
+                      isSelected
+                        ? 'ring-2 ring-amber-400'
+                        : 'opacity-60 hover:opacity-100'
+                    )}
+                    style={{
+                      backgroundColor: isSelected ? tag.color : `${tag.color}30`,
+                      color: isSelected ? '#fff' : tag.color,
                     }}
-                    className={`
-                      inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm
-                      border transition-all cursor-pointer
-                      ${isSelected 
-                        ? 'border-transparent text-white shadow-sm' 
-                        : 'border-stone-200 text-stone-600 hover:border-stone-300 bg-white'
-                      }
-                    `}
-                    style={isSelected ? { backgroundColor: tag.color } : undefined}
+                    onClick={() => {
+                      setSelectedTags((prev) =>
+                        isSelected
+                          ? prev.filter((id) => id !== tag.id)
+                          : [...prev, tag.id]
+                      );
+                    }}
                   >
                     {tag.name}
                     {isSelected && <X className="w-3 h-3" />}

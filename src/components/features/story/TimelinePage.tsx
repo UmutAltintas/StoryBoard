@@ -241,6 +241,7 @@ export function TimelinePage({ storyId, selectedId }: TimelinePageProps) {
             event={selectedEvent}
             characters={characters}
             locations={locations}
+            storyTags={storyTags}
             onEdit={() => setEditingEvent(selectedEvent)}
             onDelete={() => {
               deleteEvent(selectedEvent.id);
@@ -423,12 +424,14 @@ function EventDetails({
   event,
   characters,
   locations,
+  storyTags,
   onEdit,
   onDelete,
 }: {
   event: TimelineEvent;
   characters: { id: string; name: string }[];
   locations: { id: string; name: string }[];
+  storyTags: TagType[];
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -437,6 +440,11 @@ function EventDetails({
     event.characterIds.includes(c.id)
   );
   const Icon = significanceIcons[event.significance];
+  
+  // Resolve tag IDs to tag objects
+  const resolvedTags = event.tags
+    .map((tagId) => storyTags.find((t) => t.id === tagId))
+    .filter(Boolean) as TagType[];
 
   return (
     <ScrollArea className="flex-1">
@@ -558,7 +566,7 @@ function EventDetails({
         )}
 
         {/* Tags */}
-        {event.tags.length > 0 && (
+        {resolvedTags.length > 0 && (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-stone-500">
@@ -567,10 +575,17 @@ function EventDetails({
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                {event.tags.map((tag) => (
-                  <Badge key={tag} variant="outline">
-                    {tag}
-                  </Badge>
+                {resolvedTags.map((tag) => (
+                  <span
+                    key={tag.id}
+                    className="px-2 py-1 rounded-full text-xs font-medium"
+                    style={{
+                      backgroundColor: `${tag.color}30`,
+                      color: tag.color,
+                    }}
+                  >
+                    {tag.name}
+                  </span>
                 ))}
               </div>
             </CardContent>
@@ -744,7 +759,7 @@ function EventDialog({
                         : 'opacity-60 hover:opacity-100'
                     )}
                     style={{
-                      backgroundColor: isSelected ? tag.color : `${tag.color}40`,
+                      backgroundColor: isSelected ? tag.color : `${tag.color}30`,
                       color: isSelected ? '#fff' : tag.color,
                     }}
                     onClick={() => {

@@ -241,6 +241,7 @@ export function LocationsPage({ storyId, selectedId }: LocationsPageProps) {
             locations={locations}
             characters={characters}
             events={events}
+            storyTags={storyTags}
             onEdit={() => setEditingLocation(selectedLocation)}
             onDelete={() => {
               deleteLocation(selectedLocation.id);
@@ -307,6 +308,7 @@ function LocationDetails({
   locations,
   characters,
   events,
+  storyTags,
   onEdit,
   onDelete,
 }: {
@@ -314,6 +316,7 @@ function LocationDetails({
   locations: Location[];
   characters: { id: string; name: string }[];
   events: { id: string; title: string; locationId?: string }[];
+  storyTags: TagType[];
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -330,6 +333,11 @@ function LocationDetails({
     location.characterIds.includes(c.id)
   );
   const locationEvents = events.filter((e) => e.locationId === location.id);
+  
+  // Resolve tag IDs to tag objects
+  const resolvedTags = location.tags
+    .map((tagId) => storyTags.find((t) => t.id === tagId))
+    .filter(Boolean) as TagType[];
 
   return (
     <ScrollArea className="flex-1">
@@ -372,6 +380,24 @@ function LocationDetails({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+
+        {/* Tags */}
+        {resolvedTags.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {resolvedTags.map((tag) => (
+              <span
+                key={tag.id}
+                className="px-2 py-1 rounded-full text-xs font-medium"
+                style={{
+                  backgroundColor: `${tag.color}30`,
+                  color: tag.color,
+                }}
+              >
+                {tag.name}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Description Card */}
         {location.description && (
@@ -667,29 +693,30 @@ function LocationDialog({
               <Tag className="w-4 h-4" />
               Tags
             </Label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 p-2 border rounded-lg max-h-32 overflow-y-auto">
               {storyTags.map((tag) => {
-                const isSelected = selectedTags.includes(tag.name);
+                const isSelected = selectedTags.includes(tag.id);
                 return (
                   <button
                     key={tag.id}
                     type="button"
-                    onClick={() => {
-                      if (isSelected) {
-                        setSelectedTags(selectedTags.filter(t => t !== tag.name));
-                      } else {
-                        setSelectedTags([...selectedTags, tag.name]);
-                      }
+                    className={cn(
+                      'px-2 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1',
+                      isSelected
+                        ? 'ring-2 ring-amber-400'
+                        : 'opacity-60 hover:opacity-100'
+                    )}
+                    style={{
+                      backgroundColor: isSelected ? tag.color : `${tag.color}30`,
+                      color: isSelected ? '#fff' : tag.color,
                     }}
-                    className={`
-                      inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm
-                      border transition-all cursor-pointer
-                      ${isSelected 
-                        ? 'border-transparent text-white shadow-sm' 
-                        : 'border-stone-200 text-stone-600 hover:border-stone-300 bg-white'
-                      }
-                    `}
-                    style={isSelected ? { backgroundColor: tag.color } : undefined}
+                    onClick={() => {
+                      setSelectedTags((prev) =>
+                        isSelected
+                          ? prev.filter((id) => id !== tag.id)
+                          : [...prev, tag.id]
+                      );
+                    }}
                   >
                     {tag.name}
                     {isSelected && <X className="w-3 h-3" />}

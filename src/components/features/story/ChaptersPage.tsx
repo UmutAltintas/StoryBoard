@@ -608,27 +608,30 @@ export function ChaptersPage({ storyId }: ChaptersPageProps) {
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {storyTags.map((tag) => {
-                          const isSelected = editingTags.includes(tag.name);
+                          const isSelected = editingTags.includes(tag.id);
                           return (
                             <button
                               key={tag.id}
                               onClick={() => {
                                 if (isSelected) {
-                                  setEditingTags(editingTags.filter(t => t !== tag.name));
+                                  setEditingTags(editingTags.filter(t => t !== tag.id));
                                 } else {
-                                  setEditingTags([...editingTags, tag.name]);
+                                  setEditingTags([...editingTags, tag.id]);
                                 }
                                 setHasUnsavedChanges(true);
                               }}
                               className={`
                                 inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm
-                                border transition-all cursor-pointer
+                                transition-all cursor-pointer
                                 ${isSelected 
-                                  ? 'border-transparent text-white shadow-sm' 
-                                  : 'border-stone-200 text-stone-600 hover:border-stone-300 bg-white'
+                                  ? 'ring-2 ring-amber-400' 
+                                  : 'opacity-60 hover:opacity-100'
                                 }
                               `}
-                              style={isSelected ? { backgroundColor: tag.color } : undefined}
+                              style={{
+                                backgroundColor: isSelected ? tag.color : `${tag.color}30`,
+                                color: isSelected ? '#fff' : tag.color,
+                              }}
                             >
                               {tag.name}
                               {isSelected && <X className="w-3 h-3" />}
