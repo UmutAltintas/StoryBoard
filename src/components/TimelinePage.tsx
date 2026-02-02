@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useStoryBoardStore } from '@/lib/store';
-import { TimelineEvent, Tag as TagType } from '@/types';
+import { TimelineEvent } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,8 +44,6 @@ import {
   Star,
   Circle,
   Dot,
-  Tag,
-  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -68,7 +66,6 @@ import { CSS } from '@dnd-kit/utilities';
 
 interface TimelinePageProps {
   storyId: string;
-  selectedId?: string;
 }
 
 const significanceColors: Record<TimelineEvent['significance'], string> = {
@@ -83,7 +80,7 @@ const significanceIcons: Record<TimelineEvent['significance'], React.ComponentTy
   background: Dot,
 };
 
-export function TimelinePage({ storyId, selectedId }: TimelinePageProps) {
+export function TimelinePage({ storyId }: TimelinePageProps) {
   const {
     getEventsByStory,
     addEvent,
@@ -92,27 +89,15 @@ export function TimelinePage({ storyId, selectedId }: TimelinePageProps) {
     reorderEvents,
     getCharactersByStory,
     getLocationsByStory,
-    getTagsByStory,
   } = useStoryBoardStore();
 
   const events = getEventsByStory(storyId);
-  const storyTags = getTagsByStory(storyId);
   const characters = getCharactersByStory(storyId);
   const locations = getLocationsByStory(storyId);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(null);
-
-  // Auto-select event when selectedId prop changes (from search)
-  useEffect(() => {
-    if (selectedId) {
-      const event = events.find((e) => e.id === selectedId);
-      if (event) {
-        setSelectedEvent(event);
-      }
-    }
-  }, [selectedId, events]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -269,7 +254,6 @@ export function TimelinePage({ storyId, selectedId }: TimelinePageProps) {
         <EventDialog
           characters={characters}
           locations={locations}
-          storyTags={storyTags}
           onClose={() => setIsCreateOpen(false)}
           onSave={handleCreateEvent}
         />
@@ -282,7 +266,6 @@ export function TimelinePage({ storyId, selectedId }: TimelinePageProps) {
             event={editingEvent}
             characters={characters}
             locations={locations}
-            storyTags={storyTags}
             onClose={() => setEditingEvent(null)}
             onSave={handleUpdateEvent}
           />
@@ -585,14 +568,12 @@ function EventDialog({
   event,
   characters,
   locations,
-  storyTags,
   onClose,
   onSave,
 }: {
   event?: TimelineEvent;
   characters: { id: string; name: string }[];
   locations: { id: string; name: string }[];
-  storyTags: TagType[];
   onClose: () => void;
   onSave: (data: Omit<TimelineEvent, 'id' | 'storyId' | 'createdAt' | 'updatedAt'>) => void;
 }) {
@@ -604,7 +585,7 @@ function EventDialog({
     event?.significance || 'minor'
   );
   const [characterIds, setCharacterIds] = useState<string[]>(event?.characterIds || []);
-  const [selectedTags, setSelectedTags] = useState<string[]>(event?.tags || []);
+  const [tags, setTags] = useState(event?.tags.join(', ') || '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -617,7 +598,10 @@ function EventDialog({
       locationId: locationId || undefined,
       significance,
       characterIds,
-      tags: selectedTags,
+      tags: tags
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean),
       order: event?.order || 0,
     });
   };
@@ -683,12 +667,12 @@ function EventDialog({
 
         <div className="space-y-2">
           <Label>Location</Label>
-          <Select value={locationId || 'none'} onValueChange={(v) => setLocationId(v === 'none' ? '' : v)}>
+          <Select value={locationId} onValueChange={setLocationId}>
             <SelectTrigger>
               <SelectValue placeholder="Select location (optional)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">None</SelectItem>
+              <SelectItem value="">None</SelectItem>
               {locations.map((loc) => (
                 <SelectItem key={loc.id} value={loc.id}>
                   {loc.name}
@@ -724,45 +708,15 @@ function EventDialog({
           </div>
         </div>
 
-        {storyTags.length > 0 && (
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <Tag className="w-4 h-4" />
-              Tags
-            </Label>
-            <div className="flex flex-wrap gap-2 p-2 border rounded-lg max-h-32 overflow-y-auto">
-              {storyTags.map((tag) => {
-                const isSelected = selectedTags.includes(tag.id);
-                return (
-                  <button
-                    key={tag.id}
-                    type="button"
-                    className={cn(
-                      'px-2 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1',
-                      isSelected
-                        ? 'ring-2 ring-amber-400'
-                        : 'opacity-60 hover:opacity-100'
-                    )}
-                    style={{
-                      backgroundColor: isSelected ? tag.color : `${tag.color}40`,
-                      color: isSelected ? '#fff' : tag.color,
-                    }}
-                    onClick={() => {
-                      setSelectedTags((prev) =>
-                        isSelected
-                          ? prev.filter((id) => id !== tag.id)
-                          : [...prev, tag.id]
-                      );
-                    }}
-                  >
-                    {tag.name}
-                    {isSelected && <X className="w-3 h-3" />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        <div className="space-y-2">
+          <Label htmlFor="tags">Tags (comma-separated)</Label>
+          <Input
+            id="tags"
+            placeholder="Battle, Romance, Discovery..."
+            value={tags}
+            onChange={(e) => setTags(e.target.value)}
+          />
+        </div>
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>

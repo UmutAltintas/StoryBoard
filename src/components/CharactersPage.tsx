@@ -12,9 +12,9 @@
  * Layout: Master-detail pattern with a character list sidebar and a detail view.
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useStoryBoardStore } from '@/lib/store';
-import { Character, CharacterRelationship, Tag as TagType } from '@/types';
+import { Character, CharacterRelationship } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 // UI Components
@@ -62,7 +62,6 @@ import {
   Sparkles,
   X,
   Link as LinkIcon,
-  Tag,
 } from 'lucide-react';
 
 // ============================================================================
@@ -71,7 +70,6 @@ import {
 
 interface CharactersPageProps {
   storyId: string;
-  selectedId?: string;
 }
 
 /** Color scheme for character role badges */
@@ -86,7 +84,7 @@ const roleColors: Record<Character['role'], string> = {
 // MAIN COMPONENT
 // ============================================================================
 
-export function CharactersPage({ storyId, selectedId }: CharactersPageProps) {
+export function CharactersPage({ storyId }: CharactersPageProps) {
   // Get store actions and data
   const {
     getCharactersByStory,
@@ -98,14 +96,12 @@ export function CharactersPage({ storyId, selectedId }: CharactersPageProps) {
     deleteRelationship,
     getLocationsByStory,
     getEventsByStory,
-    getTagsByStory,
   } = useStoryBoardStore();
 
   // Fetch all related data for this story
   const characters = getCharactersByStory(storyId);
   const locations = getLocationsByStory(storyId);
   const events = getEventsByStory(storyId);
-  const storyTags = getTagsByStory(storyId);
 
   // Local UI state
   const [searchQuery, setSearchQuery] = useState('');
@@ -113,16 +109,6 @@ export function CharactersPage({ storyId, selectedId }: CharactersPageProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState<Character | null>(null);
   const [isRelationshipOpen, setIsRelationshipOpen] = useState(false);
-
-  // Auto-select character when selectedId prop changes (from search)
-  useEffect(() => {
-    if (selectedId) {
-      const character = characters.find((c) => c.id === selectedId);
-      if (character) {
-        setSelectedCharacter(character);
-      }
-    }
-  }, [selectedId, characters]);
 
   // Filter characters by search query (name, role, or personality traits)
   const filteredCharacters = characters.filter(
@@ -264,7 +250,6 @@ export function CharactersPage({ storyId, selectedId }: CharactersPageProps) {
       {/* Create Character Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <CharacterDialog
-          storyTags={storyTags}
           onClose={() => setIsCreateOpen(false)}
           onSave={handleCreateCharacter}
         />
@@ -275,7 +260,6 @@ export function CharactersPage({ storyId, selectedId }: CharactersPageProps) {
         {editingCharacter && (
           <CharacterDialog
             character={editingCharacter}
-            storyTags={storyTags}
             onClose={() => setEditingCharacter(null)}
             onSave={handleUpdateCharacter}
           />
@@ -625,12 +609,10 @@ function CharacterDetails({
  */
 function CharacterDialog({
   character,
-  storyTags,
   onClose,
   onSave,
 }: {
   character?: Character;
-  storyTags: TagType[];
   onClose: () => void;
   onSave: (data: Omit<Character, 'id' | 'storyId' | 'createdAt' | 'updatedAt'>) => void;
 }) {
@@ -644,7 +626,6 @@ function CharacterDialog({
   const [flaws, setFlaws] = useState((character?.flaws || []).join(', '));
   const [backstory, setBackstory] = useState(character?.backstory || '');
   const [notes, setNotes] = useState(character?.notes || '');
-  const [selectedTags, setSelectedTags] = useState<string[]>(character?.tags || []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -670,7 +651,7 @@ function CharacterDialog({
       locationIds: character?.locationIds || [],
       eventIds: character?.eventIds || [],
       relationshipIds: character?.relationshipIds || [],
-      tags: selectedTags,
+      tags: character?.tags || [],
     });
   };
 
@@ -790,46 +771,6 @@ function CharacterDialog({
             rows={2}
           />
         </div>
-
-        {/* Tags */}
-        {storyTags.length > 0 && (
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <Tag className="w-4 h-4" />
-              Tags
-            </Label>
-            <div className="flex flex-wrap gap-2">
-              {storyTags.map((tag) => {
-                const isSelected = selectedTags.includes(tag.name);
-                return (
-                  <button
-                    key={tag.id}
-                    type="button"
-                    onClick={() => {
-                      if (isSelected) {
-                        setSelectedTags(selectedTags.filter(t => t !== tag.name));
-                      } else {
-                        setSelectedTags([...selectedTags, tag.name]);
-                      }
-                    }}
-                    className={`
-                      inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm
-                      border transition-all cursor-pointer
-                      ${isSelected 
-                        ? 'border-transparent text-white shadow-sm' 
-                        : 'border-stone-200 text-stone-600 hover:border-stone-300 bg-white'
-                      }
-                    `}
-                    style={isSelected ? { backgroundColor: tag.color } : undefined}
-                  >
-                    {tag.name}
-                    {isSelected && <X className="w-3 h-3" />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* Actions */}
         <DialogFooter>

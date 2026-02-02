@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useStoryBoardStore } from '@/lib/store';
-import { IdeaCard, IdeaGroup, Tag as TagType } from '@/types';
+import { IdeaCard, IdeaGroup } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,14 +45,11 @@ import {
   Zap,
   FolderPlus,
   Folder,
-  Tag,
-  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface IdeasPageProps {
   storyId: string;
-  selectedId?: string;
 }
 
 const typeIcons: Record<IdeaCard['type'], React.ComponentType<{ className?: string }>> = {
@@ -92,7 +89,7 @@ const cardColors = [
   { name: 'Orange', value: 'bg-orange-50 border-orange-200' },
 ];
 
-export function IdeasPage({ storyId, selectedId }: IdeasPageProps) {
+export function IdeasPage({ storyId }: IdeasPageProps) {
   const {
     getIdeaCardsByStory,
     addIdeaCard,
@@ -102,11 +99,9 @@ export function IdeasPage({ storyId, selectedId }: IdeasPageProps) {
     addIdeaGroup,
     getCharactersByStory,
     getLocationsByStory,
-    getTagsByStory,
   } = useStoryBoardStore();
 
   const ideaCards = getIdeaCardsByStory(storyId);
-  const storyTags = getTagsByStory(storyId);
   const ideaGroups = getIdeaGroupsByStory(storyId);
   const characters = getCharactersByStory(storyId);
   const locations = getLocationsByStory(storyId);
@@ -117,17 +112,6 @@ export function IdeasPage({ storyId, selectedId }: IdeasPageProps) {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingCard, setEditingCard] = useState<IdeaCard | null>(null);
   const [isGroupCreateOpen, setIsGroupCreateOpen] = useState(false);
-  const [selectedCard, setSelectedCard] = useState<IdeaCard | null>(null);
-
-  // Auto-select idea card when selectedId prop changes (from search)
-  useEffect(() => {
-    if (selectedId) {
-      const card = ideaCards.find((c) => c.id === selectedId);
-      if (card) {
-        setEditingCard(card);
-      }
-    }
-  }, [selectedId, ideaCards]);
 
   const filteredCards = ideaCards.filter((card) => {
     const matchesSearch =
@@ -326,7 +310,6 @@ export function IdeasPage({ storyId, selectedId }: IdeasPageProps) {
           groups={ideaGroups}
           characters={characters}
           locations={locations}
-          storyTags={storyTags}
           onClose={() => setIsCreateOpen(false)}
           onSave={handleCreateCard}
         />
@@ -340,7 +323,6 @@ export function IdeasPage({ storyId, selectedId }: IdeasPageProps) {
             groups={ideaGroups}
             characters={characters}
             locations={locations}
-            storyTags={storyTags}
             onClose={() => setEditingCard(null)}
             onSave={handleUpdateCard}
           />
@@ -443,7 +425,6 @@ function IdeaDialog({
   groups,
   characters,
   locations,
-  storyTags,
   onClose,
   onSave,
 }: {
@@ -451,7 +432,6 @@ function IdeaDialog({
   groups: IdeaGroup[];
   characters: { id: string; name: string }[];
   locations: { id: string; name: string }[];
-  storyTags: TagType[];
   onClose: () => void;
   onSave: (data: Omit<IdeaCard, 'id' | 'storyId' | 'createdAt' | 'updatedAt'>) => void;
 }) {
@@ -466,7 +446,6 @@ function IdeaDialog({
   const [relatedLocationIds, setRelatedLocationIds] = useState<string[]>(
     card?.relatedLocationIds || []
   );
-  const [selectedTags, setSelectedTags] = useState<string[]>(card?.tags || []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -481,7 +460,7 @@ function IdeaDialog({
       relatedCharacterIds,
       relatedLocationIds,
       order: card?.order || 0,
-      tags: selectedTags,
+      tags: card?.tags || [],
     });
   };
 
@@ -524,12 +503,12 @@ function IdeaDialog({
           {groups.length > 0 && (
             <div className="space-y-2">
               <Label htmlFor="group">Group</Label>
-              <Select value={groupId || 'none'} onValueChange={(v) => setGroupId(v === 'none' ? '' : v)}>
+              <Select value={groupId} onValueChange={setGroupId}>
                 <SelectTrigger>
                   <SelectValue placeholder="No group" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No group</SelectItem>
+                  <SelectItem value="">No group</SelectItem>
                   {groups.map((group) => (
                     <SelectItem key={group.id} value={group.id}>
                       {group.name}
@@ -571,46 +550,6 @@ function IdeaDialog({
             ))}
           </div>
         </div>
-
-        {storyTags.length > 0 && (
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <Tag className="w-4 h-4" />
-              Tags
-            </Label>
-            <div className="flex flex-wrap gap-2 p-2 border rounded-lg max-h-32 overflow-y-auto">
-              {storyTags.map((tag) => {
-                const isSelected = selectedTags.includes(tag.id);
-                return (
-                  <button
-                    key={tag.id}
-                    type="button"
-                    className={cn(
-                      'px-2 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1',
-                      isSelected
-                        ? 'ring-2 ring-amber-400'
-                        : 'opacity-60 hover:opacity-100'
-                    )}
-                    style={{
-                      backgroundColor: isSelected ? tag.color : `${tag.color}40`,
-                      color: isSelected ? '#fff' : tag.color,
-                    }}
-                    onClick={() => {
-                      setSelectedTags((prev) =>
-                        isSelected
-                          ? prev.filter((id) => id !== tag.id)
-                          : [...prev, tag.id]
-                      );
-                    }}
-                  >
-                    {tag.name}
-                    {isSelected && <X className="w-3 h-3" />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {(characters.length > 0 || locations.length > 0) && (
           <div className="space-y-3">

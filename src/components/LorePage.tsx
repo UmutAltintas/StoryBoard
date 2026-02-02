@@ -11,9 +11,9 @@
  * Layout: Master-detail pattern with category filters and a detail view.
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useStoryBoardStore } from '@/lib/store';
-import { LoreEntry, Tag as TagType } from '@/types';
+import { LoreEntry } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 // UI Components
@@ -65,8 +65,6 @@ import {
   Globe,
   Heart,
   HelpCircle,
-  Tag,
-  X,
 } from 'lucide-react';
 
 // ============================================================================
@@ -75,7 +73,6 @@ import {
 
 interface LorePageProps {
   storyId: string;
-  selectedId?: string;
 }
 
 /** Icons for each lore category */
@@ -121,7 +118,7 @@ const categoryLabels: Record<LoreEntry['category'], string> = {
 // MAIN COMPONENT
 // ============================================================================
 
-export function LorePage({ storyId, selectedId }: LorePageProps) {
+export function LorePage({ storyId }: LorePageProps) {
   // Get store actions and data
   const {
     getLoreEntriesByStory,
@@ -131,7 +128,6 @@ export function LorePage({ storyId, selectedId }: LorePageProps) {
     getCharactersByStory,
     getLocationsByStory,
     getEventsByStory,
-    getTagsByStory,
   } = useStoryBoardStore();
 
   // Fetch related data
@@ -139,7 +135,6 @@ export function LorePage({ storyId, selectedId }: LorePageProps) {
   const characters = getCharactersByStory(storyId);
   const locations = getLocationsByStory(storyId);
   const events = getEventsByStory(storyId);
-  const storyTags = getTagsByStory(storyId);
 
   // Local UI state
   const [searchQuery, setSearchQuery] = useState('');
@@ -147,16 +142,6 @@ export function LorePage({ storyId, selectedId }: LorePageProps) {
   const [selectedEntry, setSelectedEntry] = useState<LoreEntry | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<LoreEntry | null>(null);
-
-  // Auto-select lore entry when selectedId prop changes (from search)
-  useEffect(() => {
-    if (selectedId) {
-      const entry = loreEntries.find((e) => e.id === selectedId);
-      if (entry) {
-        setSelectedEntry(entry);
-      }
-    }
-  }, [selectedId, loreEntries]);
 
   const categories = Object.keys(categoryLabels) as LoreEntry['category'][];
 
@@ -352,7 +337,6 @@ export function LorePage({ storyId, selectedId }: LorePageProps) {
           characters={characters}
           locations={locations}
           events={events}
-          storyTags={storyTags}
           onClose={() => setIsCreateOpen(false)}
           onSave={handleCreateEntry}
         />
@@ -366,7 +350,6 @@ export function LorePage({ storyId, selectedId }: LorePageProps) {
             characters={characters}
             locations={locations}
             events={events}
-            storyTags={storyTags}
             onClose={() => setEditingEntry(null)}
             onSave={handleUpdateEntry}
           />
@@ -532,7 +515,6 @@ function LoreDialog({
   characters,
   locations,
   events,
-  storyTags,
   onClose,
   onSave,
 }: {
@@ -540,7 +522,6 @@ function LoreDialog({
   characters: { id: string; name: string }[];
   locations: { id: string; name: string }[];
   events: { id: string; title: string }[];
-  storyTags: TagType[];
   onClose: () => void;
   onSave: (data: Omit<LoreEntry, 'id' | 'storyId' | 'createdAt' | 'updatedAt'>) => void;
 }) {
@@ -548,7 +529,7 @@ function LoreDialog({
   const [title, setTitle] = useState(entry?.title || '');
   const [category, setCategory] = useState<LoreEntry['category']>(entry?.category || 'other');
   const [content, setContent] = useState(entry?.content || '');
-  const [selectedTags, setSelectedTags] = useState<string[]>(entry?.tags || []);
+  const [tags, setTags] = useState(entry?.tags.join(', ') || '');
   const [relatedCharacterIds, setRelatedCharacterIds] = useState<string[]>(
     entry?.relatedCharacterIds || []
   );
@@ -567,7 +548,10 @@ function LoreDialog({
       title: title.trim(),
       category,
       content: content.trim(),
-      tags: selectedTags,
+      tags: tags
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean),
       relatedCharacterIds,
       relatedLocationIds,
       relatedEventIds,
@@ -627,46 +611,13 @@ function LoreDialog({
 
         {/* Tags */}
         <div className="space-y-2">
-          <Label className="flex items-center gap-2">
-            <Tag className="w-4 h-4" />
-            Tags
-          </Label>
-          {storyTags.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {storyTags.map((tag) => {
-                const isSelected = selectedTags.includes(tag.name);
-                return (
-                  <button
-                    key={tag.id}
-                    type="button"
-                    onClick={() => {
-                      if (isSelected) {
-                        setSelectedTags(selectedTags.filter(t => t !== tag.name));
-                      } else {
-                        setSelectedTags([...selectedTags, tag.name]);
-                      }
-                    }}
-                    className={`
-                      inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm
-                      border transition-all cursor-pointer
-                      ${isSelected 
-                        ? 'border-transparent text-white shadow-sm' 
-                        : 'border-stone-200 text-stone-600 hover:border-stone-300 bg-white'
-                      }
-                    `}
-                    style={isSelected ? { backgroundColor: tag.color } : undefined}
-                  >
-                    {tag.name}
-                    {isSelected && <X className="w-3 h-3" />}
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-sm text-stone-400 italic">
-              No tags created yet. Create tags in the Tags section.
-            </p>
-          )}
+          <Label htmlFor="tags">Tags (comma-separated)</Label>
+          <Input
+            id="tags"
+            placeholder="Ancient, Forbidden, Elemental..."
+            value={tags}
+            onChange={(e) => setTags(e.target.value)}
+          />
         </div>
 
         {/* Related Elements Tabs */}

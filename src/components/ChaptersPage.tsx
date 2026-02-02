@@ -48,10 +48,6 @@ import {
   Circle,
   Sparkles,
   MoreHorizontal,
-  BookOpen,
-  X,
-  ArrowUp,
-  Tag,
 } from 'lucide-react';
 
 // =============================================================================
@@ -81,10 +77,7 @@ export function ChaptersPage({ storyId }: ChaptersPageProps) {
     updateChapter,
     deleteChapter,
     reorderChapters,
-    getTagsByStory,
   } = useStoryBoardStore();
-
-  const storyTags = getTagsByStory(storyId);
 
   const chapters = getChaptersByStory(storyId);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -95,14 +88,12 @@ export function ChaptersPage({ storyId }: ChaptersPageProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [focusMode, setFocusMode] = useState(false);
-  const [readAllMode, setReadAllMode] = useState(false);
 
   // Editor state
   const [editingTitle, setEditingTitle] = useState('');
   const [editingContent, setEditingContent] = useState('');
   const [editingSummary, setEditingSummary] = useState('');
   const [editingNotes, setEditingNotes] = useState('');
-  const [editingTags, setEditingTags] = useState<string[]>([]);
   const [editingStatus, setEditingStatus] = useState<ChapterStatus>('draft');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -125,7 +116,6 @@ export function ChaptersPage({ storyId }: ChaptersPageProps) {
     setEditingSummary(selectedChapter.summary || '');
     setEditingNotes(selectedChapter.notes || '');
     setEditingStatus(selectedChapter.status);
-    setEditingTags(selectedChapter.tags || []);
     setHasUnsavedChanges(false);
     
     // Start new writing session
@@ -160,7 +150,6 @@ export function ChaptersPage({ storyId }: ChaptersPageProps) {
       summary: editingSummary,
       notes: editingNotes,
       status: editingStatus,
-      tags: editingTags,
       wordCount,
     });
     
@@ -183,25 +172,15 @@ export function ChaptersPage({ storyId }: ChaptersPageProps) {
         e.preventDefault();
         handleSave();
       }
-      // Escape in read mode to exit
-      if (e.key === 'Escape' && readAllMode) {
-        setReadAllMode(false);
-        return;
-      }
       // Escape to toggle focus mode
       if (e.key === 'Escape' && selectedChapterId) {
         setFocusMode((prev) => !prev);
-      }
-      // Cmd/Ctrl + Shift + R to enter read mode
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'r' && chapters.length > 0) {
-        e.preventDefault();
-        setReadAllMode(true);
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleSave, selectedChapterId, readAllMode, chapters.length]);
+  }, [handleSave, selectedChapterId]);
 
   // Create new chapter
   const handleCreateChapter = () => {
@@ -266,7 +245,7 @@ export function ChaptersPage({ storyId }: ChaptersPageProps) {
 
   return (
     <TooltipProvider>
-      <div className="flex min-h-screen bg-white">
+      <div className="flex h-[calc(100vh-4rem)] bg-[#faf9f7]">
         {/* ===== COLLAPSIBLE CHAPTER SIDEBAR ===== */}
         <div
           className={`${
@@ -279,31 +258,14 @@ export function ChaptersPage({ storyId }: ChaptersPageProps) {
               <h2 className="text-sm font-semibold text-stone-600 uppercase tracking-wide">
                 Chapters
               </h2>
-              <div className="flex items-center gap-1">
-                {chapters.length > 0 && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setReadAllMode(true)}
-                        className="h-7 px-2 text-stone-500 hover:text-stone-800"
-                      >
-                        <BookOpen className="w-4 h-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Read all chapters</TooltipContent>
-                  </Tooltip>
-                )}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setIsCreating(true)}
-                  className="h-7 px-2 text-stone-500 hover:text-stone-800"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setIsCreating(true)}
+                className="h-7 px-2 text-stone-500 hover:text-stone-800"
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
             </div>
             
             {/* Quick Stats */}
@@ -525,8 +487,8 @@ export function ChaptersPage({ storyId }: ChaptersPageProps) {
               </div>
 
               {/* ===== WRITING CANVAS ===== */}
-              <div className="flex-1 overflow-auto relative">
-                <div className={`mx-auto transition-all duration-300 ${focusMode ? 'max-w-2xl' : 'max-w-3xl'} px-4 py-8 pb-28`}>
+              <div className="flex-1 overflow-auto">
+                <div className={`mx-auto transition-all duration-300 ${focusMode ? 'max-w-2xl' : 'max-w-3xl'} px-4 py-8`}>
                   {/* Summary (collapsible in focus mode) */}
                   {!focusMode && editingSummary.trim() === '' && (
                     <div className="mb-6">
@@ -558,25 +520,46 @@ export function ChaptersPage({ storyId }: ChaptersPageProps) {
                     </div>
                   )}
 
-                  {/* ===== MAIN WRITING AREA ===== */}
-                  <div className="bg-white rounded-xl shadow-sm border border-stone-200/50 overflow-hidden">
-                    <Textarea
-                      ref={textareaRef}
-                      placeholder="Begin writing..."
-                      value={editingContent}
-                      onChange={(e) => onContentChange(e.target.value)}
-                      className={`
-                        w-full border-none focus-visible:ring-0 resize-none
-                        text-[18px] leading-[1.8] tracking-wide
-                        text-stone-800 placeholder:text-stone-300
-                        p-8 md:p-12
-                        ${focusMode ? 'min-h-[70vh]' : 'min-h-[50vh]'}
-                        font-[Average,Georgia,Times,serif]
-                      `}
-                      style={{ 
-                        fontFamily: "'Average', Georgia, 'Times New Roman', serif",
-                      }}
-                    />
+                  {/* ===== MAIN WRITING AREA (PAGE) ===== */}
+                  <div
+                    className={`
+                      relative bg-[#fdfaf6] shadow-xl border border-stone-200/70 rounded-2xl mx-auto
+                      ${focusMode ? 'max-w-2xl' : 'max-w-3xl'}
+                      min-h-[60vh] md:min-h-[70vh] px-0 py-0 flex flex-col
+                    `}
+                    style={{ boxShadow: '0 4px 32px 0 rgba(60,40,10,0.04)' }}
+                  >
+                    <div className="relative">
+                      {(!editingContent || editingContent.trim() === '') && (
+                        <div className="absolute left-0 top-0 w-full px-10 md:px-16 py-12 text-stone-300 pointer-events-none select-none font-serif text-[20px] leading-[2]">
+                          Begin writing...
+                        </div>
+                      )}
+                      <div
+                        ref={textareaRef as any}
+                        contentEditable
+                        suppressContentEditableWarning
+                        spellCheck={true}
+                        role="textbox"
+                        aria-label="Chapter text"
+                        className="
+                          outline-none focus:outline-none w-full h-full
+                          font-serif text-[20px] leading-[2] tracking-wide
+                          text-stone-800
+                          px-10 md:px-16 py-12
+                          whitespace-pre-wrap break-words
+                          selection:bg-yellow-100 selection:text-stone-900
+                          bg-transparent
+                          transition-shadow
+                        "
+                        style={{ minHeight: focusMode ? '70vh' : '60vh', background: 'none' }}
+                        onInput={e => {
+                          const html = (e.target as HTMLDivElement).innerText;
+                          onContentChange(html);
+                        }}
+                        dangerouslySetInnerHTML={{ __html: editingContent.replace(/\n/g, '<br>') }}
+                      />
+                    </div>
                   </div>
 
                   {/* Author Notes (hidden in focus mode) */}
@@ -598,66 +581,11 @@ export function ChaptersPage({ storyId }: ChaptersPageProps) {
                       />
                     </div>
                   )}
-
-                  {/* Chapter Tags (hidden in focus mode) */}
-                  {!focusMode && (
-                    <div className="mt-6">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Tag className="w-4 h-4 text-blue-500" />
-                        <span className="text-sm font-medium text-stone-500">Tags</span>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {storyTags.map((tag) => {
-                          const isSelected = editingTags.includes(tag.name);
-                          return (
-                            <button
-                              key={tag.id}
-                              onClick={() => {
-                                if (isSelected) {
-                                  setEditingTags(editingTags.filter(t => t !== tag.name));
-                                } else {
-                                  setEditingTags([...editingTags, tag.name]);
-                                }
-                                setHasUnsavedChanges(true);
-                              }}
-                              className={`
-                                inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm
-                                border transition-all cursor-pointer
-                                ${isSelected 
-                                  ? 'border-transparent text-white shadow-sm' 
-                                  : 'border-stone-200 text-stone-600 hover:border-stone-300 bg-white'
-                                }
-                              `}
-                              style={isSelected ? { backgroundColor: tag.color } : undefined}
-                            >
-                              {tag.name}
-                              {isSelected && <X className="w-3 h-3" />}
-                            </button>
-                          );
-                        })}
-                        {storyTags.length === 0 && (
-                          <span className="text-sm text-stone-400 italic">
-                            No tags yet. Create tags in the Tags section.
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
 
-              {/* ===== BOTTOM STATUS BAR (FIXED) ===== */}
-              <div
-                className={`border-t border-stone-200 bg-white/95 backdrop-blur-sm shadow-[0_-2px_12px_#0001] px-4 py-2 transition-opacity ${focusMode ? 'opacity-0 hover:opacity-100' : ''}`}
-                style={{
-                  position: 'fixed',
-                  left: '250px', // width of sidebar
-                  right: 0,
-                  bottom: 0,
-                  zIndex: 50,
-                  maxWidth: 'calc(100vw - 250px)',
-                }}
-              >
+              {/* ===== BOTTOM STATUS BAR ===== */}
+              <div className={`border-t border-stone-200 bg-white px-4 py-2 transition-opacity ${focusMode ? 'opacity-0 hover:opacity-100' : ''}`}>
                 <div className="flex items-center justify-between text-sm">
                   {/* Left: Word counts */}
                   <div className="flex items-center gap-6 text-stone-500">
@@ -685,6 +613,7 @@ export function ChaptersPage({ storyId }: ChaptersPageProps) {
                         <Target className="w-4 h-4" />
                         <span>Goal: {dailyGoal.toLocaleString()}</span>
                       </button>
+                      
                       {showGoalPicker && (
                         <div className="absolute bottom-8 right-0 bg-white border border-stone-200 rounded-lg shadow-lg p-2 z-10">
                           {DAILY_GOAL_OPTIONS.map((goal) => (
@@ -701,6 +630,7 @@ export function ChaptersPage({ storyId }: ChaptersPageProps) {
                         </div>
                       )}
                     </div>
+                    
                     {/* Progress bar */}
                     <div className="w-32 h-2 bg-stone-100 rounded-full overflow-hidden">
                       <div
@@ -746,123 +676,6 @@ export function ChaptersPage({ storyId }: ChaptersPageProps) {
             </div>
           )}
         </div>
-
-        {/* ===== READ ALL MODE OVERLAY ===== */}
-        {readAllMode && (
-          <div className="fixed inset-0 z-[100] bg-[#faf9f7] overflow-auto">
-            {/* Header */}
-            <div className="sticky top-0 bg-[#faf9f7]/95 backdrop-blur-sm border-b border-stone-200 z-10">
-              <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <BookOpen className="w-5 h-5 text-stone-600" />
-                  <span className="font-serif text-lg text-stone-700">Reading Mode</span>
-                  <span className="text-sm text-stone-400">
-                    {chapters.length} chapters • {totalWordCount.toLocaleString()} words
-                  </span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setReadAllMode(false)}
-                  className="h-8 w-8"
-                >
-                  <X className="w-5 h-5" />
-                </Button>
-              </div>
-            </div>
-
-            {/* Chapters Content */}
-            <div className="max-w-3xl mx-auto px-4 py-12">
-              {chapters.map((chapter, index) => (
-                <article key={chapter.id} className="mb-16">
-                  {/* Chapter Header */}
-                  <header className="mb-8 text-center">
-                    <div className="text-sm font-medium text-stone-400 uppercase tracking-widest mb-2">
-                      Chapter {index + 1}
-                    </div>
-                    <h2 className="font-serif text-3xl md:text-4xl text-stone-800 mb-3">
-                      {chapter.title}
-                    </h2>
-                    {chapter.summary && (
-                      <p className="text-stone-500 italic max-w-xl mx-auto">
-                        {chapter.summary}
-                      </p>
-                    )}
-                    <div className="mt-4 text-sm text-stone-400">
-                      {(chapter.wordCount || 0).toLocaleString()} words
-                    </div>
-                  </header>
-
-                  {/* Chapter Content */}
-                  <div 
-                    className="prose prose-stone prose-lg max-w-none"
-                    style={{ 
-                      fontFamily: "'Average', Georgia, 'Times New Roman', serif",
-                      fontSize: '18px',
-                      lineHeight: '1.9',
-                      letterSpacing: '0.01em',
-                    }}
-                  >
-                    {chapter.content ? (
-                      chapter.content.split('\n\n').map((paragraph, pIndex) => (
-                        <p key={pIndex} className="text-stone-700 mb-6 text-justify">
-                          {paragraph.split('\n').map((line, lIndex, arr) => (
-                            <span key={lIndex}>
-                              {line}
-                              {lIndex < arr.length - 1 && <br />}
-                            </span>
-                          ))}
-                        </p>
-                      ))
-                    ) : (
-                      <p className="text-stone-400 italic text-center">
-                        This chapter has no content yet.
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Chapter Divider */}
-                  {index < chapters.length - 1 && (
-                    <div className="flex items-center justify-center mt-16">
-                      <div className="flex items-center gap-4">
-                        <div className="w-16 h-px bg-stone-300" />
-                        <Feather className="w-4 h-4 text-stone-300" />
-                        <div className="w-16 h-px bg-stone-300" />
-                      </div>
-                    </div>
-                  )}
-                </article>
-              ))}
-
-              {/* End of Story */}
-              <div className="text-center py-12 border-t border-stone-200 mt-8">
-                <p className="text-sm text-stone-400 uppercase tracking-widest mb-4">
-                  — End —
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setReadAllMode(false);
-                    window.scrollTo(0, 0);
-                  }}
-                  className="gap-2"
-                >
-                  <ArrowUp className="w-4 h-4" />
-                  Back to Writing
-                </Button>
-              </div>
-            </div>
-
-            {/* Floating back-to-top button */}
-            <button
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="fixed bottom-6 right-6 p-3 bg-white rounded-full shadow-lg border border-stone-200 hover:bg-stone-50 transition-colors"
-              title="Back to top"
-            >
-              <ArrowUp className="w-5 h-5 text-stone-600" />
-            </button>
-          </div>
-        )}
       </div>
     </TooltipProvider>
   );

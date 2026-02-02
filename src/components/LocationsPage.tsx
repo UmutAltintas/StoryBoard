@@ -12,9 +12,9 @@
  * Layout: Master-detail pattern with a location list and a detail view.
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useStoryBoardStore } from '@/lib/store';
-import { Location, Tag as TagType } from '@/types';
+import { Location } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 // UI Components
@@ -63,8 +63,6 @@ import {
   Mountain,
   Castle,
   Sparkles,
-  Tag,
-  X,
 } from 'lucide-react';
 
 // ============================================================================
@@ -73,7 +71,6 @@ import {
 
 interface LocationsPageProps {
   storyId: string;
-  selectedId?: string;
 }
 
 /** Icons for each location type */
@@ -100,7 +97,7 @@ const typeColors: Record<Location['type'], string> = {
 // MAIN COMPONENT
 // ============================================================================
 
-export function LocationsPage({ storyId, selectedId }: LocationsPageProps) {
+export function LocationsPage({ storyId }: LocationsPageProps) {
   // Get store actions and data
   const {
     getLocationsByStory,
@@ -109,30 +106,18 @@ export function LocationsPage({ storyId, selectedId }: LocationsPageProps) {
     deleteLocation,
     getCharactersByStory,
     getEventsByStory,
-    getTagsByStory,
   } = useStoryBoardStore();
 
   // Fetch related data
   const locations = getLocationsByStory(storyId);
   const characters = getCharactersByStory(storyId);
   const events = getEventsByStory(storyId);
-  const storyTags = getTagsByStory(storyId);
 
   // Local UI state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingLocation, setEditingLocation] = useState<Location | null>(null);
-
-  // Auto-select location when selectedId prop changes (from search)
-  useEffect(() => {
-    if (selectedId) {
-      const location = locations.find((l) => l.id === selectedId);
-      if (location) {
-        setSelectedLocation(location);
-      }
-    }
-  }, [selectedId, locations]);
 
   // Filter locations by search query
   const filteredLocations = locations.filter(
@@ -272,7 +257,6 @@ export function LocationsPage({ storyId, selectedId }: LocationsPageProps) {
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <LocationDialog
           locations={locations}
-          storyTags={storyTags}
           onClose={() => setIsCreateOpen(false)}
           onSave={handleCreateLocation}
         />
@@ -284,7 +268,6 @@ export function LocationsPage({ storyId, selectedId }: LocationsPageProps) {
           <LocationDialog
             location={editingLocation}
             locations={locations}
-            storyTags={storyTags}
             onClose={() => setEditingLocation(null)}
             onSave={handleUpdateLocation}
           />
@@ -512,13 +495,11 @@ function LocationDetails({
 function LocationDialog({
   location,
   locations,
-  storyTags,
   onClose,
   onSave,
 }: {
   location?: Location;
   locations: Location[];
-  storyTags: TagType[];
   onClose: () => void;
   onSave: (data: Omit<Location, 'id' | 'storyId' | 'createdAt' | 'updatedAt'>) => void;
 }) {
@@ -530,7 +511,6 @@ function LocationDialog({
   const [significance, setSignificance] = useState(location?.significance || '');
   const [parentLocationId, setParentLocationId] = useState(location?.parentLocationId || '');
   const [notes, setNotes] = useState(location?.notes || '');
-  const [selectedTags, setSelectedTags] = useState<string[]>(location?.tags || []);
 
   // Exclude current location from parent options
   const availableParents = locations.filter((l) => l.id !== location?.id);
@@ -549,7 +529,7 @@ function LocationDialog({
       notes: notes.trim() || undefined,
       characterIds: location?.characterIds || [],
       eventIds: location?.eventIds || [],
-      tags: selectedTags,
+      tags: location?.tags || [],
     });
   };
 
@@ -596,12 +576,12 @@ function LocationDialog({
         {availableParents.length > 0 && (
           <div className="space-y-2">
             <Label htmlFor="parent">Parent Location</Label>
-            <Select value={parentLocationId || 'none'} onValueChange={(v) => setParentLocationId(v === 'none' ? '' : v)}>
+            <Select value={parentLocationId} onValueChange={setParentLocationId}>
               <SelectTrigger>
                 <SelectValue placeholder="Select parent location (optional)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="">None</SelectItem>
                 {availableParents.map((loc) => (
                   <SelectItem key={loc.id} value={loc.id}>
                     {loc.name}
@@ -659,46 +639,6 @@ function LocationDialog({
             rows={2}
           />
         </div>
-
-        {/* Tags */}
-        {storyTags.length > 0 && (
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <Tag className="w-4 h-4" />
-              Tags
-            </Label>
-            <div className="flex flex-wrap gap-2">
-              {storyTags.map((tag) => {
-                const isSelected = selectedTags.includes(tag.name);
-                return (
-                  <button
-                    key={tag.id}
-                    type="button"
-                    onClick={() => {
-                      if (isSelected) {
-                        setSelectedTags(selectedTags.filter(t => t !== tag.name));
-                      } else {
-                        setSelectedTags([...selectedTags, tag.name]);
-                      }
-                    }}
-                    className={`
-                      inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm
-                      border transition-all cursor-pointer
-                      ${isSelected 
-                        ? 'border-transparent text-white shadow-sm' 
-                        : 'border-stone-200 text-stone-600 hover:border-stone-300 bg-white'
-                      }
-                    `}
-                    style={isSelected ? { backgroundColor: tag.color } : undefined}
-                  >
-                    {tag.name}
-                    {isSelected && <X className="w-3 h-3" />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* Actions */}
         <DialogFooter>
