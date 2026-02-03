@@ -203,7 +203,7 @@ export function LorePage({ storyId, selectedId }: LorePageProps) {
         {/* Header with search and category filters */}
         <div className="p-4 border-b border-stone-200">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-xl font-bold text-stone-800">Lore Builder</h1>
+            <h1 className="text-xl font-bold text-stone-800">Story Details</h1>
             <Button
               size="sm"
               className="bg-amber-600 hover:bg-amber-700"

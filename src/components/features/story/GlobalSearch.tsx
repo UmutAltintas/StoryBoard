@@ -160,7 +160,7 @@ export function GlobalSearch({ storyId, open, onOpenChange }: GlobalSearchProps)
         {results && results.lore && results.lore.length > 0 && (
           <>
             <CommandSeparator />
-            <CommandGroup heading="Lore">
+            <CommandGroup heading="Story Details">
               {results.lore.map((entry) => (
                 <CommandItem
                   key={entry.id}

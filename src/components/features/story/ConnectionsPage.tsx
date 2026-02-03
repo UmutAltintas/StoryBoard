@@ -521,7 +521,7 @@ export function ConnectionsPage({ storyId }: ConnectionsPageProps) {
                   </TabsTrigger>
                   <TabsTrigger value="lore" disabled={loreEntries.length === 0}>
                     <BookMarked className="w-4 h-4 mr-1" />
-                    Lore
+                    Details
                   </TabsTrigger>
                   <TabsTrigger value="idea" disabled={ideaCards.length === 0}>
                     <Lightbulb className="w-4 h-4 mr-1" />

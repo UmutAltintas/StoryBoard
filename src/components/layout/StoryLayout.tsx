@@ -51,7 +51,7 @@ const NAVIGATION = [
   { name: 'Chapters', href: '/chapters', icon: FileText },
   { name: 'Characters', href: '/characters', icon: Users },
   { name: 'Locations', href: '/locations', icon: MapPin },
-  { name: 'Lore', href: '/lore', icon: BookMarked },
+  { name: 'Story Details', href: '/lore', icon: BookMarked },
   { name: 'Timeline', href: '/timeline', icon: Clock },
   { name: 'Ideas', href: '/ideas', icon: Lightbulb },
   { name: 'Connections', href: '/connections', icon: Network },

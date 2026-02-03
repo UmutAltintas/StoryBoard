@@ -106,7 +106,7 @@ export function StoryOverview({ story }: StoryOverviewProps) {
       description: 'Map your fictional world',
     },
     {
-      name: 'Lore',
+      name: 'Story Details',
       count: loreEntries.length,
       icon: BookMarked,
       href: `/story/${story.id}/lore`,
