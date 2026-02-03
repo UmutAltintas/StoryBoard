@@ -215,7 +215,7 @@ export function LorePage({ storyId, selectedId }: LorePageProps) {
           <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
             <Input
-              placeholder="Search lore..."
+              placeholder="Search details..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 bg-stone-50 border-stone-200"
@@ -343,7 +343,7 @@ export function LorePage({ storyId, selectedId }: LorePageProps) {
                 <BookMarked className="w-8 h-8 text-green-600" />
               </div>
               <h3 className="text-lg font-medium text-stone-800 mb-2">
-                Select a lore entry
+                Select an entry
               </h3>
               <p className="text-stone-500 max-w-xs">
                 Choose an entry from the list to view details, or create a new one.
@@ -602,7 +602,7 @@ function LoreDialog({
   return (
     <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
       <DialogHeader>
-        <DialogTitle>{entry ? 'Edit Lore Entry' : 'Create Lore Entry'}</DialogTitle>
+        <DialogTitle>{entry ? 'Edit Entry' : 'Create Entry'}</DialogTitle>
         <DialogDescription>
           Add details about your world&apos;s lore, systems, and background.
         </DialogDescription>
